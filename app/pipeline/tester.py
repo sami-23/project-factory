@@ -62,7 +62,11 @@ def _run_node(idea: dict, tmpdir: Path, log) -> tuple[bool, str, str]:
         return False, "", "node not found in PATH"
     _install_node_deps(tmpdir, log)
     if idea["project_type"] == "web":
-        return _check_web_start(idea, tmpdir, log, ["node", idea["entry_point"]])
+        entry = idea["entry_point"]
+        if entry.endswith(".html"):
+            log("⚠️  entry_point is HTML, switching to npx serve")
+            return _check_web_start(idea, tmpdir, log, ["npx", "serve", "-l", str(idea.get("web_port") or 3000)])
+        return _check_web_start(idea, tmpdir, log, ["node", entry])
     log(f"🏃 {idea['run_command']}")
     r = subprocess.run(
         ["node", idea["entry_point"]],

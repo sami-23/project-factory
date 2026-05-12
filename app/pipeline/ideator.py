@@ -25,6 +25,11 @@ Requirements:
 - Language: Python OR JavaScript (pick whichever fits best)
 - Lean toward creative / unusual / delightful over boring utilities
 
+Critical rules for entry_point:
+- Python web: entry_point must be a .py file that starts a Flask/FastAPI server
+- JavaScript web: entry_point must be a .js file (e.g. server.js) using Express — NEVER index.html
+- CLI / data_viz: entry_point is the main script file
+
 Respond with ONLY a JSON object, no markdown fences:
 {{
   "title": "CoolProjectName",
@@ -32,9 +37,9 @@ Respond with ONLY a JSON object, no markdown fences:
   "language": "python",
   "project_type": "web | cli | data_viz",
   "tech_stack": ["lib1", "lib2"],
-  "entry_point": "main.py",
-  "run_command": "python main.py",
-  "web_port": 5000
+  "entry_point": "server.js",
+  "run_command": "node server.js",
+  "web_port": 3000
 }}
 
 Set web_port to null if project_type is not web."""

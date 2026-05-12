@@ -63,6 +63,12 @@ async def run_pipeline():
                 fp.write_text(code, encoding="utf-8")
 
             success, stdout, stderr = run_project(idea, tmp, log)
+
+            if not success:
+                log("❌ Project failed to run — aborting, no GitHub repo created")
+                db.update_run(run_id, status="failed")
+                return
+
             await take_screenshot(idea, tmp, stdout, screenshot_path, log)
 
         db.update_run(
