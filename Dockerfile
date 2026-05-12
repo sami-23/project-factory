@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-bookworm
 
 # Node.js (for JS projects)
 RUN apt-get update && apt-get install -y curl gnupg && \
