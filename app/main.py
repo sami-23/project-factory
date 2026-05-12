@@ -72,24 +72,29 @@ async def trigger_build(background_tasks: BackgroundTasks):
 
 @app.get("/logs/stream")
 async def stream_logs():
-    """SSE endpoint: streams log lines of the currently running job."""
-
     async def generate():
         sent = 0
-        while True:
-            current = db.get_current_run()
+        idle = 0
+        while idle < 30:
+            current = await asyncio.to_thread(db.get_current_run)
             if current:
-                log = current.get("log") or ""
-                lines = log.splitlines()
+                idle = 0
+                lines = (current.get("log") or "").splitlines()
                 for line in lines[sent:]:
                     yield f"data: {json.dumps(line)}\n\n"
                 sent = len(lines)
                 if current["status"] != "running":
                     yield "data: __done__\n\n"
                     return
+            else:
+                idle += 1
             await asyncio.sleep(1)
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/logs/{run_id}")
