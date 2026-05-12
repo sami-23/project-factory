@@ -4,7 +4,8 @@ jinja2==3.1.4
 python-multipart==0.0.9
 pydantic-settings==2.4.0
 anthropic==0.34.2
-openai==1.45.0
+openai==1.57.0
+httpx<0.28.0
 PyGithub==2.4.0
 apscheduler==3.10.4
 playwright==1.47.0
