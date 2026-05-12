@@ -97,4 +97,13 @@ def _parse_blocks(markdown: str) -> list[tuple[str, str]]:
         fallback = re.findall(r"```(?:[\w+-]*)\n(.*?)```", markdown, re.DOTALL)
         if fallback:
             return [("main.py", fallback[0].strip())]
-    return [(n.strip(), c.strip()) for n, c in matches]
+    return [(_clean_filename(n), c.strip()) for n, c in matches]
+
+
+def _clean_filename(name: str) -> str:
+    name = name.strip()
+    name = re.sub(r"^<!--\s*|\s*-->$", "", name)   # <!-- file.html -->
+    name = re.sub(r"^/\*\s*|\s*\*/$", "", name)    # /* file.js */
+    name = re.sub(r"^//\s*", "", name)              # // file.js
+    name = re.sub(r"^#\s*", "", name)               # # file.py
+    return name.strip()
