@@ -48,10 +48,13 @@ async def _shot_web(idea: dict, tmpdir: Path, out: Path, log) -> bool:
 
     try:
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch()
+            browser = await pw.chromium.launch(args=["--no-sandbox"])
             page = await browser.new_page(viewport={"width": 1280, "height": 720})
-            await page.goto(f"http://localhost:{port}", timeout=15000)
-            await page.wait_for_timeout(2500)
+            await page.goto(f"http://localhost:{port}", timeout=15000,
+                            wait_until="networkidle")
+            # Extra wait for canvas/WebGL/animation frames to render
+            has_canvas = await page.query_selector("canvas") is not None
+            await page.wait_for_timeout(5000 if has_canvas else 2500)
             await page.screenshot(path=str(out))
             await browser.close()
         log("📸 Web screenshot saved")
