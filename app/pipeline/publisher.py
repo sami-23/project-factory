@@ -1,4 +1,6 @@
-import base64
+import shutil
+import subprocess
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -7,7 +9,6 @@ from app.config import get_settings
 
 
 def create_repo(idea: dict, log) -> tuple:
-    """Creates the GitHub repo. Returns (repo_obj, html_url)."""
     settings = get_settings()
     g = Github(settings.github_token)
     user = g.get_user()
@@ -37,34 +38,40 @@ def create_repo(idea: dict, log) -> tuple:
 
 
 def push_all(repo, files: list[tuple[str, str]], readme: str, screenshot_path: Path | None, log):
-    """Pushes all files as a single git commit using the Git Data API."""
-    blobs = []
+    settings = get_settings()
+    token = settings.github_token
+    clone_url = f"https://{token}@github.com/{repo.full_name}.git"
 
-    for filename, code in files:
-        b = repo.create_git_blob(code, "utf-8")
-        blobs.append(InputGitTreeElement(filename, "100644", "blob", b.sha))
-        log(f"  ↑ {filename}")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
 
-    if readme:
-        b = repo.create_git_blob(readme, "utf-8")
-        blobs.append(InputGitTreeElement("README.md", "100644", "blob", b.sha))
-        log("  ↑ README.md")
+        # Write all project files
+        for filename, code in files:
+            fp = tmp / filename
+            fp.parent.mkdir(parents=True, exist_ok=True)
+            fp.write_text(code, encoding="utf-8")
+            log(f"  ↑ {filename}")
 
-    if screenshot_path and screenshot_path.exists():
-        with open(screenshot_path, "rb") as f:
-            encoded = base64.b64encode(f.read()).decode()
-        b = repo.create_git_blob(encoded, "base64")
-        blobs.append(InputGitTreeElement("screenshot.png", "100644", "blob", b.sha))
-        log("  ↑ screenshot.png")
+        if readme:
+            (tmp / "README.md").write_text(readme, encoding="utf-8")
+            log("  ↑ README.md")
 
-    tree = repo.create_git_tree(blobs)
-    commit = repo.create_git_commit("🤖 Initial commit — auto-generated project", tree, [])
-    repo.create_git_ref("refs/heads/main", commit.sha)
+        if screenshot_path and screenshot_path.exists():
+            shutil.copy(screenshot_path, tmp / "screenshot.png")
+            log("  ↑ screenshot.png")
+
+        # Git init + commit + push
+        def git(*args):
+            subprocess.run(["git", *args], cwd=tmp, check=True,
+                           capture_output=True, text=True)
+
+        git("init")
+        git("config", "user.email", "bot@project-factory.ai")
+        git("config", "user.name", "Project Factory")
+        git("remote", "add", "origin", clone_url)
+        git("add", ".")
+        git("commit", "-m", "🤖 Initial commit — auto-generated project")
+        git("branch", "-M", "main")
+        git("push", "-u", "origin", "main")
+
     log(f"✅ Pushed to {repo.html_url}")
-
-
-# PyGithub's InputGitTreeElement lives in github.InputGitTreeElement
-try:
-    from github import InputGitTreeElement
-except ImportError:
-    from github.InputGitTreeElement import InputGitTreeElement
