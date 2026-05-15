@@ -8,7 +8,7 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 
 def generate_idea(log) -> dict:
     settings = get_settings()
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=90.0)
 
     recent = get_recent_titles(30)
     avoid_block = "\n".join(f"- {t}" for t in recent) if recent else "None yet"

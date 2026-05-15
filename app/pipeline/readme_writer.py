@@ -6,7 +6,7 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 
 def write_readme(idea: dict, files: list[tuple[str, str]], stdout: str, github_url: str, log) -> str:
     settings = get_settings()
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=120.0)
 
     file_str = "\n\n".join(
         f"**{name}**\n```{idea['language']}\n{code[:1500]}\n```"

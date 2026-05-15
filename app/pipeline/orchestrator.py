@@ -33,8 +33,10 @@ async def run_pipeline():
         print(msg, flush=True)
         db.append_log(run_id, msg)
 
-    # Wrap every blocking call so the event loop stays free for SSE streaming
-    T = asyncio.to_thread
+    # Wrap every blocking call so the event loop stays free for SSE streaming.
+    # asyncio.wait_for adds a hard timeout so a hung API call fails loudly.
+    async def T(fn, *args, timeout=300):
+        return await asyncio.wait_for(asyncio.to_thread(fn, *args), timeout=timeout)
 
     try:
         log(f"🚀 Pipeline started — {today}")
@@ -50,7 +52,7 @@ async def run_pipeline():
         )
 
         # 2. Code generation (blocking: OpenAI + Anthropic HTTP calls)
-        files = await T(generate_code, idea, log)
+        files = await T(generate_code, idea, log, timeout=480)
 
         # 3. Test + screenshot
         screenshot_dir = Path(settings.data_dir) / "screenshots"

@@ -20,8 +20,8 @@ _LANG_HINTS = {
 
 def generate_code(idea: dict, log) -> list[tuple[str, str]]:
     settings = get_settings()
-    oai = OpenAI(api_key=settings.openai_api_key)
-    claude = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    oai = OpenAI(api_key=settings.openai_api_key, timeout=180.0)
+    claude = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=180.0)
 
     lang = idea["language"]
     web_line = f"Web port: {idea['web_port']}" if idea.get("web_port") else ""
