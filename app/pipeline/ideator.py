@@ -36,9 +36,11 @@ Categories (pick the least-used one relative to the list above):
 12. Retro / nostalgia (ASCII art, old-school terminal animation, BBS-style board)
 
 Requirements:
-- Completable in ~150-250 lines of code total
-- Must produce visible output: web UI, rich terminal output, or a saved image
+- 400-800 lines of code total, split across 3-6 files (not one giant file)
+- Real architecture: separate concerns (e.g. server, routes, data layer, frontend, helpers)
+- Must produce visible output: web UI with multiple views/pages, rich terminal output, or a saved image
 - Language: Python OR JavaScript (pick whichever fits best)
+- Include at least one interesting data structure, algorithm, or non-trivial logic
 - Interesting and delightful — avoid generic "hello world" style projects
 - NO particle systems, NO space/galaxy themes, NO generic canvas animations
 

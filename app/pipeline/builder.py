@@ -41,14 +41,17 @@ Run command: {idea['run_command']}
 
 Rules:
 - Write complete, runnable code — no TODO stubs or placeholders
+- Split into 3-6 files with clear separation of concerns (server, routes, helpers, data, frontend)
+- Total code should be 400-800 lines — make it real, not a toy
 - Use Markdown code blocks with filename on the opening fence: ```python filename.py
-- Generate ALL necessary files (source + deps file)
+- Generate ALL necessary files (source + config + deps file)
 - For web: serve on the specified port, include hardcoded sample/demo data so it works immediately
+- For web: build a proper multi-page or multi-section UI with navigation, not a single static page
 - CRITICAL for web: if the server serves any HTML/CSS/JS static files, those files MUST be generated too
   - NEVER reference public/index.html, templates/index.html, or any static file unless you include it
   - Every file the server reads from disk must be in your output
   - Keep all HTML inline in the server (e.g. res.send('<html>...')) to avoid missing file errors
-- For cli: produce colourful, interesting terminal output
+- For cli: produce colourful, multi-section terminal output with real logic
 - For data_viz: save the final image to output.png
 - Only output code blocks, nothing else"""
 
@@ -56,7 +59,7 @@ Rules:
     gpt_resp = oai.chat.completions.create(
         model=GPT_MODEL,
         messages=[{"role": "user", "content": gpt_prompt}],
-        max_tokens=8000,
+        max_tokens=16000,
     )
     raw = gpt_resp.choices[0].message.content.strip()
     files = _parse_blocks(raw)
@@ -86,7 +89,7 @@ If everything is correct, return the files unchanged. Only output code blocks.""
     log("🔍 Claude reviewing and fixing code...")
     review_resp = claude.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=8000,
+        max_tokens=16000,
         messages=[{"role": "user", "content": review_prompt}],
     )
     reviewed = _parse_blocks(review_resp.content[0].text.strip())
