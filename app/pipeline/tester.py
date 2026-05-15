@@ -10,6 +10,12 @@ from pathlib import Path
 
 def run_project(idea: dict, tmpdir: Path, log) -> tuple[bool, str, str]:
     lang = idea["language"]
+    entry = tmpdir / idea["entry_point"]
+    if not entry.exists():
+        files = [p.name for p in tmpdir.rglob("*") if p.is_file()]
+        msg = f"Entry point '{idea['entry_point']}' not found. Files present: {files}"
+        log(f"❌ {msg}")
+        return False, "", msg
     if lang == "python":
         return _run_python(idea, tmpdir, log)
     elif lang == "javascript":

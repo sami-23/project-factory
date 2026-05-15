@@ -64,6 +64,24 @@ async def run_pipeline():
                 fp.parent.mkdir(parents=True, exist_ok=True)
                 fp.write_text(code, encoding="utf-8")
 
+            # If the declared entry_point wasn't generated, find the real one
+            if not (tmp / idea["entry_point"]).exists():
+                generated = [f[0] for f in files]
+                log(f"⚠️  entry_point '{idea['entry_point']}' missing — generated: {generated}")
+                ep_name = Path(idea["entry_point"]).name
+                match = next((f for f in generated if Path(f).name == ep_name), None)
+                if match is None:
+                    for candidate in ("server.js", "app.js", "index.js", "main.js",
+                                      "server.py", "app.py", "main.py"):
+                        match = next((f for f in generated if Path(f).name == candidate), None)
+                        if match:
+                            break
+                if match is None and generated:
+                    match = generated[0]
+                if match:
+                    idea = {**idea, "entry_point": match}
+                    log(f"📌 Adjusted entry_point → '{match}'")
+
             # blocking: subprocess + time.sleep polling
             success, stdout, stderr = await T(run_project, idea, tmp, log)
 
