@@ -115,4 +115,5 @@ def _clean_filename(name: str) -> str:
     name = re.sub(r"^/\*\s*|\s*\*/$", "", name)    # /* file.js */
     name = re.sub(r"^//\s*", "", name)              # // file.js
     name = re.sub(r"^#\s*", "", name)               # # file.py
+    name = re.sub(r"^filename=", "", name)           # filename=server.js
     return name.strip()
