@@ -6,18 +6,36 @@ from app.database import get_recent_titles
 CLAUDE_MODEL = "claude-sonnet-4-6"
 
 
-def generate_idea(log) -> dict:
+def generate_idea(log, prefs: dict = None) -> dict:
+    prefs = prefs or {}
     settings = get_settings()
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=90.0)
 
     recent = get_recent_titles(30)
     avoid_block = "\n".join(f"- {t}" for t in recent) if recent else "None yet"
 
+    # Build override lines from user prefs
+    lang_line = (
+        f"Language MUST be: {prefs['language']}"
+        if prefs.get("language")
+        else "Language: Python OR JavaScript (pick whichever fits best)"
+    )
+    type_line = (
+        f"\nproject_type MUST be: {prefs['project_type']}"
+        if prefs.get("project_type")
+        else ""
+    )
+    cat_override = (
+        f"\nUser has chosen category: {prefs['category']} — use this category, skip the rotation list."
+        if prefs.get("category")
+        else ""
+    )
+
     prompt = f"""You are a creative software project generator. Invent a unique, fun programming project.
 
 Already built — avoid similar ideas AND similar categories:
 {avoid_block}
-
+{cat_override}
 Pick ONE category from this list that is NOT represented in the already-built list above.
 Rotate through the full list over time — do not cluster in the same area.
 
@@ -39,10 +57,10 @@ Requirements:
 - 400-800 lines of code total, split across 3-6 files (not one giant file)
 - Real architecture: separate concerns (e.g. server, routes, data layer, frontend, helpers)
 - Must produce visible output: web UI with multiple views/pages, rich terminal output, or a saved image
-- Language: Python OR JavaScript (pick whichever fits best)
+- {lang_line}
 - Include at least one interesting data structure, algorithm, or non-trivial logic
 - Interesting and delightful — avoid generic "hello world" style projects
-- NO particle systems, NO space/galaxy themes, NO generic canvas animations
+- NO particle systems, NO space/galaxy themes, NO generic canvas animations{type_line}
 
 Critical rules for entry_point:
 - Python web: entry_point must be a .py file that starts a Flask/FastAPI server

@@ -10,7 +10,7 @@ from fastapi.requests import Request
 
 from app.config import get_settings
 from app import database as db
-from app.pipeline.orchestrator import run_pipeline, is_running
+from app.pipeline.orchestrator import run_pipeline, is_running, VERSION
 from app.scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="Project Factory")
@@ -54,6 +54,7 @@ def dashboard(request: Request):
             "runs": runs,
             "current": current,
             "is_running": is_running(),
+            "version": VERSION,
         },
     )
 
@@ -61,10 +62,14 @@ def dashboard(request: Request):
 # ── trigger ───────────────────────────────────────────────────────────────────
 
 @app.post("/build")
-async def trigger_build(background_tasks: BackgroundTasks):
+async def trigger_build(background_tasks: BackgroundTasks, request: Request):
     if is_running():
         return {"status": "already_running"}
-    background_tasks.add_task(run_pipeline)
+    try:
+        prefs = await request.json()
+    except Exception:
+        prefs = {}
+    background_tasks.add_task(run_pipeline, prefs)
     return {"status": "started"}
 
 

@@ -91,6 +91,21 @@
   .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
   .modal-close:hover { color: var(--text); }
   .modal-log { padding: 16px 18px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.7; color: #c9d1d9; overflow-y: auto; white-space: pre-wrap; flex: 1; }
+
+  /* build options modal */
+  .build-modal { max-width: 460px; }
+  .build-modal .modal-body { padding: 20px 18px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .field select {
+    width: 100%; background: #010409; border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none;
+    appearance: none; cursor: pointer;
+  }
+  .field select:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--border); }
+  .btn-secondary { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-secondary:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -98,8 +113,10 @@
 <header>
   <div>
     <div class="logo">⚙️ Project Factory <span>Daily AI-generated GitHub projects</span></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:3px">git:{{ version }}</div>
   </div>
-  <button class="build-btn" id="buildBtn" {% if is_running %}disabled{% endif %} onclick="triggerBuild()">
+  <button class="build-btn" id="buildBtn" {% if is_running %}disabled{% endif %}
+          onclick="{% if not is_running %}openBuildModal(){% endif %}">
     {% if is_running %}⏳ Building…{% else %}▶ Build Now{% endif %}
   </button>
 </header>
@@ -187,6 +204,58 @@
 
 </main>
 
+<!-- Build options modal -->
+<div class="modal-overlay" id="buildModal" onclick="if(event.target===this)closeBuildModal()">
+  <div class="modal build-modal">
+    <div class="modal-header">
+      <span>Build Options</span>
+      <button class="modal-close" onclick="closeBuildModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:18px">Leave any option as <em>Any</em> to let the AI decide freely.</p>
+      <div class="field">
+        <label>Language</label>
+        <select id="prefLang">
+          <option value="">Any</option>
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select id="prefCategory">
+          <option value="">Any (AI rotates automatically)</option>
+          <option value="Mini game">Mini Game</option>
+          <option value="Music / audio">Music / Audio</option>
+          <option value="Data tool">Data Tool</option>
+          <option value="Generative art">Generative Art</option>
+          <option value="Productivity">Productivity</option>
+          <option value="Science / math">Science / Math</option>
+          <option value="Finance / numbers">Finance / Numbers</option>
+          <option value="Language / text">Language / Text</option>
+          <option value="Geography / maps">Geography / Maps</option>
+          <option value="Fun / novelty">Fun / Novelty</option>
+          <option value="Developer tool">Developer Tool</option>
+          <option value="Retro / nostalgia">Retro / Nostalgia</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Project Type</label>
+        <select id="prefType">
+          <option value="">Any</option>
+          <option value="web">Web App</option>
+          <option value="cli">CLI (terminal)</option>
+          <option value="data_viz">Data Viz (image)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeBuildModal()">Cancel</button>
+      <button class="build-btn" onclick="startBuild()">▶ Build Now</button>
+    </div>
+  </div>
+</div>
+
 <!-- Log modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
@@ -201,11 +270,33 @@
 <script>
 let evtSource = null;
 
-function triggerBuild() {
+function openBuildModal() {
+  document.getElementById('buildModal').classList.add('open');
+}
+
+function closeBuildModal() {
+  document.getElementById('buildModal').classList.remove('open');
+}
+
+function startBuild() {
+  closeBuildModal();
+  const prefs = {
+    language:     document.getElementById('prefLang').value,
+    category:     document.getElementById('prefCategory').value,
+    project_type: document.getElementById('prefType').value,
+  };
+  // Strip empty values so ideator treats them as "no preference"
+  Object.keys(prefs).forEach(k => { if (!prefs[k]) delete prefs[k]; });
+
   const btn = document.getElementById('buildBtn');
   btn.disabled = true;
   btn.textContent = '⏳ Building…';
-  fetch('/build', { method: 'POST' }).then(() => {
+
+  fetch('/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prefs),
+  }).then(() => {
     document.getElementById('live-section').style.display = 'block';
     startLogStream();
   });

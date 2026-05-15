@@ -1,4 +1,5 @@
 import asyncio
+import subprocess
 import tempfile
 from datetime import date
 from pathlib import Path
@@ -12,6 +13,19 @@ from app.pipeline.screenshotter import take_screenshot
 from app.pipeline.readme_writer import write_readme
 from app.pipeline.publisher import create_repo, push_all
 
+
+def _get_version() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True,
+        ).stdout.strip()
+    except Exception:
+        return "dev"
+
+
+VERSION = _get_version()
+
 _running = False
 
 
@@ -19,7 +33,7 @@ def is_running() -> bool:
     return _running
 
 
-async def run_pipeline():
+async def run_pipeline(prefs: dict | None = None):
     global _running
     if _running:
         return
@@ -39,10 +53,10 @@ async def run_pipeline():
         return await asyncio.wait_for(asyncio.to_thread(fn, *args), timeout=timeout)
 
     try:
-        log(f"🚀 Pipeline started — {today}")
+        log(f"🚀 Pipeline started — {today} | git:{VERSION}")
 
         # 1. Idea (blocking: Anthropic HTTP call)
-        idea = await T(generate_idea, log)
+        idea = await T(generate_idea, log, prefs or {})
         db.update_run(
             run_id,
             title=idea["title"],
