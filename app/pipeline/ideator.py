@@ -13,17 +13,34 @@ def generate_idea(log) -> dict:
     recent = get_recent_titles(30)
     avoid_block = "\n".join(f"- {t}" for t in recent) if recent else "None yet"
 
-    prompt = f"""You are a creative software project generator. Invent a unique, fun, visually impressive programming project.
+    prompt = f"""You are a creative software project generator. Invent a unique, fun programming project.
 
-Already built — avoid similar ideas:
+Already built — avoid similar ideas AND similar categories:
 {avoid_block}
 
+Pick ONE category from this list that is NOT represented in the already-built list above.
+Rotate through the full list over time — do not cluster in the same area.
+
+Categories (pick the least-used one relative to the list above):
+1. Mini game (snake, tetris, minesweeper, breakout, word game, quiz)
+2. Music / audio (beat sequencer, chord explorer, waveform visualizer, piano)
+3. Data tool (CSV analyzer, JSON formatter, stats dashboard, log parser)
+4. Generative art (fractal, L-system, maze, mosaic, pixel art generator) — NOT particles or space
+5. Productivity (pomodoro, habit tracker, markdown previewer, note taking)
+6. Science / math (cellular automaton, gravity sim, fourier series, sorting visualizer)
+7. Finance / numbers (budget tracker, tip calculator, currency converter, compound interest)
+8. Language / text (word frequency map, cipher tool, lorem generator, text diff)
+9. Geography / maps (ASCII world map, timezone clock, country quiz, distance calculator)
+10. Fun / novelty (horoscope generator, excuse generator, compliment bot, emoji art)
+11. Developer tool (regex tester, color palette picker, base converter, cron explainer)
+12. Retro / nostalgia (ASCII art, old-school terminal animation, BBS-style board)
+
 Requirements:
-- Genuinely interesting and impressive when seen on GitHub
 - Completable in ~150-250 lines of code total
 - Must produce visible output: web UI, rich terminal output, or a saved image
 - Language: Python OR JavaScript (pick whichever fits best)
-- Lean toward creative / unusual / delightful over boring utilities
+- Interesting and delightful — avoid generic "hello world" style projects
+- NO particle systems, NO space/galaxy themes, NO generic canvas animations
 
 Critical rules for entry_point:
 - Python web: entry_point must be a .py file that starts a Flask/FastAPI server
