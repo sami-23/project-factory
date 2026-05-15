@@ -44,6 +44,10 @@ Rules:
 - Use Markdown code blocks with filename on the opening fence: ```python filename.py
 - Generate ALL necessary files (source + deps file)
 - For web: serve on the specified port, include hardcoded sample/demo data so it works immediately
+- CRITICAL for web: if the server serves any HTML/CSS/JS static files, those files MUST be generated too
+  - NEVER reference public/index.html, templates/index.html, or any static file unless you include it
+  - Every file the server reads from disk must be in your output
+  - Keep all HTML inline in the server (e.g. res.send('<html>...')) to avoid missing file errors
 - For cli: produce colourful, interesting terminal output
 - For data_viz: save the final image to output.png
 - Only output code blocks, nothing else"""
@@ -66,6 +70,11 @@ Run command: {idea['run_command']}
 Type: {idea['project_type']}
 
 {file_str}
+
+Critical checks for web projects:
+- Does the server reference any file on disk (sendFile, express.static, readFileSync, etc.)?
+  If yes, that file MUST be in the file list. If it is missing, either add it or rewrite the server to inline the HTML with res.send().
+- A missing static file causes ENOENT errors and a broken page — treat it as a bug.
 
 Return ALL files in the same code-block format:
 ```lang filename

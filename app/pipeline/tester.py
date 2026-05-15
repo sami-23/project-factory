@@ -3,6 +3,8 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.request
+import urllib.error
 from pathlib import Path
 
 
@@ -77,6 +79,20 @@ def _run_node(idea: dict, tmpdir: Path, log) -> tuple[bool, str, str]:
     return ok, r.stdout, r.stderr
 
 
+def _http_ok(port: int) -> tuple[bool, str]:
+    """Returns (ok, reason). ok=False if server responds with 5xx."""
+    try:
+        with urllib.request.urlopen(f"http://localhost:{port}/", timeout=5) as r:
+            return True, ""
+    except urllib.error.HTTPError as e:
+        if e.code >= 500:
+            body = e.read(500).decode("utf-8", errors="replace")
+            return False, f"HTTP {e.code}: {body[:200]}"
+        return True, ""  # 404/3xx etc. are fine
+    except Exception:
+        return True, ""  # connection error after port-open is unusual but not fatal
+
+
 def _check_web_start(idea: dict, tmpdir: Path, log, cmd: list) -> tuple[bool, str, str]:
     port = idea.get("web_port") or 5000
     log(f"🌐 Starting web server (port {port})...")
@@ -88,6 +104,12 @@ def _check_web_start(idea: dict, tmpdir: Path, log, cmd: list) -> tuple[bool, st
         time.sleep(0.75)
         with socket.socket() as s:
             if s.connect_ex(("127.0.0.1", port)) == 0:
+                ok, reason = _http_ok(port)
+                if not ok:
+                    proc.kill()
+                    stdout, stderr = proc.communicate(timeout=5)
+                    log(f"❌ Server started but returned error: {reason}")
+                    return False, stdout, reason
                 log(f"✅ Server is up on :{port}")
                 # Leave it running — screenshotter will kill it
                 return True, f"Server running on :{port}", ""
