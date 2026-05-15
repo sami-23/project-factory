@@ -62,6 +62,10 @@ Rules:
         max_tokens=16000,
     )
     raw = gpt_resp.choices[0].message.content.strip()
+    # Log first fence header raw so filename format is visible in logs
+    first_fence = re.search(r"```[^\n]*", raw)
+    if first_fence:
+        log(f"  🔎 first fence: {first_fence.group(0)[:80]}")
     files = _parse_blocks(raw)
     log(f"📦 GPT produced {len(files)} file(s): {', '.join(f[0] for f in files)}")
 
@@ -103,7 +107,8 @@ If everything is correct, return the files unchanged. Only output code blocks.""
 
 
 def _parse_blocks(markdown: str) -> list[tuple[str, str]]:
-    pattern = r"```(?:\w+)?\s+([^\n`]+)\n(.*?)```"
+    # Handles: ```lang name.py  OR  ```lang filename=name.py
+    pattern = r"```(?:[\w+-]+)?\s+(?:filename=)?([^\n`]+)\n(.*?)```"
     matches = re.findall(pattern, markdown, re.DOTALL)
     if not matches:
         fallback = re.findall(r"```(?:[\w+-]*)\n(.*?)```", markdown, re.DOTALL)
@@ -114,9 +119,11 @@ def _parse_blocks(markdown: str) -> list[tuple[str, str]]:
 
 def _clean_filename(name: str) -> str:
     name = name.strip()
-    name = re.sub(r"^<!--\s*|\s*-->$", "", name)   # <!-- file.html -->
-    name = re.sub(r"^/\*\s*|\s*\*/$", "", name)    # /* file.js */
-    name = re.sub(r"^//\s*", "", name)              # // file.js
-    name = re.sub(r"^#\s*", "", name)               # # file.py
-    name = re.sub(r"^filename=", "", name)           # filename=server.js
+    name = re.sub(r"^<!--\s*|\s*-->$", "", name)        # <!-- file.html -->
+    name = re.sub(r"^/\*\s*|\s*\*/$", "", name)         # /* file.js */
+    name = re.sub(r"^//\s*", "", name)                   # // file.js
+    name = re.sub(r"^#\s*", "", name)                    # # file.py
+    name = re.sub(r"^filename=", "", name, flags=re.IGNORECASE)  # filename=server.js
+    # Strip anything that isn't a valid path character
+    name = re.sub(r"[^\w./_-]", "", name)
     return name.strip()
