@@ -83,6 +83,15 @@ Critical checks for web projects:
   If yes, that file MUST be in the file list. If it is missing, either add it or rewrite the server to inline the HTML with res.send().
 - A missing static file causes ENOENT errors and a broken page — treat it as a bug.
 
+Critical checks for Flask/Python web projects:
+- NEVER rely on relative template paths. Flask must be initialised with an explicit absolute template folder:
+    import os
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'),
+                          static_folder=os.path.join(BASE_DIR, 'static'))
+  Without this, Jinja2 raises TemplateNotFound when the server is started from a different working directory.
+- If routes are in a Blueprint, the Blueprint must NOT set its own template_folder (leave it as None so it inherits the app's folder).
+
 Return ALL files in the same code-block format:
 ```lang filename
 code

@@ -21,7 +21,11 @@ def _get_version() -> str:
             capture_output=True, text=True,
         ).stdout.strip()
     except Exception:
-        return "dev"
+        pass
+    try:
+        return (Path(__file__).parent.parent / "VERSION").read_text().strip()
+    except Exception:
+        return "unknown"
 
 
 VERSION = _get_version()
