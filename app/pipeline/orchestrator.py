@@ -23,10 +23,17 @@ def _get_version() -> str:
         ).stdout.strip()
     except Exception:
         pass
-    try:
-        return (Path(__file__).parent.parent / "VERSION").read_text().strip()
-    except Exception:
-        return "unknown"
+    # Walk up from this file looking for the VERSION file
+    p = Path(__file__).resolve()
+    for _ in range(6):
+        p = p.parent
+        candidate = p / "VERSION"
+        if candidate.exists():
+            try:
+                return candidate.read_text().strip()
+            except Exception:
+                break
+    return "unknown"
 
 
 VERSION = _get_version()

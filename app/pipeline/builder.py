@@ -8,7 +8,12 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 
 _LANG_HINTS = {
     "python": (
-        "Use only stdlib + well-known pip packages. "
+        "Use only stdlib + well-known pip packages that ship pre-built wheels "
+        "(flask, fastapi, uvicorn, requests, rich, pandas, numpy, matplotlib, "
+        "pillow, pydantic, jinja2, etc.). "
+        "NEVER use packages that require compilation from source or system-level "
+        "build tools (e.g. no obscure C-extension packages, no packages that fail "
+        "with 'Getting requirements to build wheel'). "
         "Always include a requirements.txt listing every third-party package."
     ),
     "javascript": (
