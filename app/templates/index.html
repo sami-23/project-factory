@@ -84,6 +84,10 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
   .log-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
   .log-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .retry-btn { background: none; border: 1px solid var(--yellow); color: var(--yellow); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+  .retry-btn:hover { background: var(--yellow); color: #0d1117; }
+  .delete-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+  .delete-btn:hover { border-color: var(--red); color: var(--red); }
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: 90%; max-width: 780px; max-height: 80vh; display: flex; flex-direction: column; }
@@ -190,6 +194,10 @@
           {% endif %}
           <span class="card-date">{{ run.date }}</span>
           <button class="log-btn" onclick="showLog({{ run.id }})">Logs</button>
+          {% if run.status == 'failed' %}
+          <button class="retry-btn" onclick="retryRun({{ run.id }})">↺ Retry</button>
+          <button class="delete-btn" onclick="deleteRun({{ run.id }})">✕ Delete</button>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -323,6 +331,29 @@ function startLogStream() {
 
 // Auto-connect if already running on page load
 {% if is_running %}startLogStream();{% endif %}
+
+async function retryRun(runId) {
+  if (!confirm('Retry building this project with the same idea?')) return;
+  const btn = document.getElementById('buildBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Building…';
+  const r = await fetch(`/runs/${runId}/retry`, { method: 'POST' });
+  const data = await r.json();
+  if (data.status === 'started') {
+    document.getElementById('live-section').style.display = 'block';
+    startLogStream();
+  } else {
+    alert(data.detail || data.message || 'Could not start retry');
+    btn.disabled = false;
+    btn.textContent = '▶ Build Now';
+  }
+}
+
+async function deleteRun(runId) {
+  if (!confirm('Delete this failed run? This cannot be undone.')) return;
+  await fetch(`/runs/${runId}`, { method: 'DELETE' });
+  location.reload();
+}
 
 async function showLog(runId) {
   document.getElementById('modalTitle').textContent = `Build Log — Run #${runId}`;

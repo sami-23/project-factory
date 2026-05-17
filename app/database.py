@@ -23,9 +23,15 @@ def init_db():
             screenshot_path TEXT,
             status      TEXT NOT NULL DEFAULT 'running',
             log         TEXT DEFAULT '',
+            idea_json   TEXT,
             created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    # Migration for existing databases that predate idea_json column
+    try:
+        conn.execute("ALTER TABLE projects ADD COLUMN idea_json TEXT")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 
@@ -83,6 +89,13 @@ def get_recent_titles(n: int = 30) -> list[str]:
     ).fetchall()
     conn.close()
     return [r[0] for r in rows]
+
+
+def delete_run(run_id: int):
+    conn = sqlite3.connect(_db_path())
+    conn.execute("DELETE FROM projects WHERE id = ?", (run_id,))
+    conn.commit()
+    conn.close()
 
 
 def get_current_run() -> dict | None:

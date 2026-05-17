@@ -13,11 +13,11 @@ from app import database as db
 from app.pipeline.orchestrator import run_pipeline, is_running, VERSION
 from app.scheduler import start_scheduler, stop_scheduler
 
-app = FastAPI(title="Project Factory")
-templates = Jinja2Templates(directory="app/templates")
-
 settings = get_settings()
 data_dir = Path(settings.data_dir)
+
+app = FastAPI(title="Project Factory")
+templates = Jinja2Templates(directory="app/templates")
 
 
 @app.on_event("startup")
@@ -70,6 +70,38 @@ async def trigger_build(background_tasks: BackgroundTasks, request: Request):
     except Exception:
         prefs = {}
     background_tasks.add_task(run_pipeline, prefs)
+    return {"status": "started"}
+
+
+# ── run management ───────────────────────────────────────────────────────────
+
+@app.delete("/runs/{run_id}")
+def delete_run(run_id: int):
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(404)
+    if run["status"] == "running":
+        raise HTTPException(400, "Cannot delete a run that is currently in progress")
+    if run.get("screenshot_path"):
+        try:
+            Path(run["screenshot_path"]).unlink(missing_ok=True)
+        except Exception:
+            pass
+    db.delete_run(run_id)
+    return {"status": "deleted"}
+
+
+@app.post("/runs/{run_id}/retry")
+async def retry_run(run_id: int, background_tasks: BackgroundTasks):
+    if is_running():
+        return {"status": "already_running"}
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(404)
+    if not run.get("idea_json"):
+        raise HTTPException(400, "No idea data stored for this run — trigger a fresh build instead")
+    retry_idea = json.loads(run["idea_json"])
+    background_tasks.add_task(run_pipeline, None, retry_idea)
     return {"status": "started"}
 
 

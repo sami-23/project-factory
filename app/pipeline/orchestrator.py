@@ -1,4 +1,5 @@
 import asyncio
+import json
 import subprocess
 import tempfile
 from datetime import date
@@ -37,7 +38,7 @@ def is_running() -> bool:
     return _running
 
 
-async def run_pipeline(prefs: dict | None = None):
+async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None):
     global _running
     if _running:
         return
@@ -57,16 +58,22 @@ async def run_pipeline(prefs: dict | None = None):
         return await asyncio.wait_for(asyncio.to_thread(fn, *args), timeout=timeout)
 
     try:
-        log(f"🚀 Pipeline started — {today} | git:{VERSION}")
+        log(f"🚀 Pipeline started — {today} | v{VERSION}")
 
-        # 1. Idea (blocking: Anthropic HTTP call)
-        idea = await T(generate_idea, log, prefs or {})
+        # 1. Idea — skip if retrying a known idea
+        if retry_idea:
+            idea = retry_idea
+            log(f"🔄 Retrying: \"{idea['title']}\" ({idea['language']}, {idea['project_type']})")
+        else:
+            idea = await T(generate_idea, log, prefs or {})
+
         db.update_run(
             run_id,
             title=idea["title"],
             description=idea["description"],
             language=idea["language"],
             project_type=idea["project_type"],
+            idea_json=json.dumps(idea),
         )
 
         # 2. Code generation (blocking: OpenAI + Anthropic HTTP calls)
