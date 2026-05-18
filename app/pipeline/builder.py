@@ -14,7 +14,11 @@ _LANG_HINTS = {
         "NEVER use packages that require compilation from source or system-level "
         "build tools (e.g. no obscure C-extension packages, no packages that fail "
         "with 'Getting requirements to build wheel'). "
-        "Always include a requirements.txt listing every third-party package."
+        "Always include a requirements.txt listing every third-party package. "
+        "CRITICAL for Flask/web: NEVER call render_template('x.html') unless you also generate "
+        "that template file (e.g. templates/x.html). "
+        "Prefer render_template_string(\"\"\"<html>...</html>\"\"\") to keep HTML inline and avoid "
+        "TemplateNotFound errors at runtime."
     ),
     "javascript": (
         "Use only well-known npm packages. "
@@ -75,6 +79,9 @@ Rules:
   - NEVER reference public/index.html, templates/index.html, or any static file unless you include it
   - Every file the server reads from disk must be in your output
   - Keep all HTML inline in the server (e.g. res.send('<html>...')) to avoid missing file errors
+- CRITICAL for Python/Flask: if you call render_template('x.html'), you MUST also generate templates/x.html
+  - Prefer render_template_string(\"\"\"...\"\"\") to keep HTML inline and avoid TemplateNotFound errors
+  - NEVER call render_template() for a file you do not generate — this causes HTTP 500
 - For cli: produce colourful, multi-section terminal output with real logic
 - For data_viz: save the final image to output.png
 - Only output code blocks, nothing else"""
@@ -103,12 +110,17 @@ Type: {idea['project_type']}
 {file_str}
 
 Critical checks for web projects:
-- Does the server reference any file on disk (sendFile, express.static, readFileSync, etc.)?
-  If yes, that file MUST be in the file list. If it is missing, either add it or rewrite the server to inline the HTML with res.send().
-- A missing static file causes ENOENT errors and a broken page — treat it as a bug.
+- Does the server reference any file on disk (sendFile, express.static, readFileSync, render_template, etc.)?
+  If yes, that file MUST be in the file list. If it is missing, either add it or rewrite the server to inline the HTML.
+- A missing file (ENOENT or TemplateNotFound) causes errors — treat it as a critical bug.
 
 Critical checks for Flask/Python web projects:
-- NEVER rely on relative template paths. Flask must be initialised with an explicit absolute template folder:
+- Scan every route for render_template('x.html') calls. For EACH call, check the file list for templates/x.html.
+  If that template is missing from the file list, you MUST either:
+  a) Add the full templates/x.html file to your output, OR
+  b) Rewrite the route to use render_template_string(\"\"\"<html>...</html>\"\"\") instead.
+  This is the #1 cause of HTTP 500 errors — a TemplateNotFound crash. Do not skip this check.
+- Flask must be initialised with an explicit absolute template folder:
     import os
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'),
@@ -135,6 +147,15 @@ If everything is correct, return the files unchanged. Only output code blocks.""
         log(f"✅ Claude finalised {len(files)} file(s)")
     else:
         log("⚠️  Claude review returned nothing — using GPT output as-is")
+
+    # Sanity check: warn if any render_template('x') call has no matching template file
+    file_names = {f[0] for f in files}
+    for fname, code in files:
+        for m in re.finditer(r"render_template\(['\"]([^'\"]+)['\"]", code):
+            tpl = m.group(1)
+            tpl_path = f"templates/{tpl}" if "/" not in tpl else tpl
+            if tpl_path not in file_names and tpl not in file_names:
+                log(f"⚠️  render_template('{tpl}') in {fname} but '{tpl_path}' not in file list — may cause TemplateNotFound")
 
     return files
 
