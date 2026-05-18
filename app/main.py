@@ -1,5 +1,7 @@
 import asyncio
+import io
 import json
+import zipfile
 from pathlib import Path
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
@@ -47,6 +49,8 @@ def get_screenshot(filename: str):
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     runs = db.get_all_runs()
+    for run in runs:
+        run["has_download"] = (data_dir / "projects" / str(run["id"])).exists()
     current = db.get_current_run()
     return templates.TemplateResponse(
         "index.html",
@@ -88,8 +92,40 @@ def delete_run(run_id: int):
             Path(run["screenshot_path"]).unlink(missing_ok=True)
         except Exception:
             pass
+    # Remove persisted project files
+    project_dir = data_dir / "projects" / str(run_id)
+    if project_dir.exists():
+        import shutil
+        shutil.rmtree(project_dir, ignore_errors=True)
     db.delete_run(run_id)
     return {"status": "deleted"}
+
+
+@app.get("/runs/{run_id}/download")
+def download_run(run_id: int):
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(404)
+    project_dir = data_dir / "projects" / str(run_id)
+    if not project_dir.exists():
+        raise HTTPException(404, detail="Project files are not available — only builds after the latest deploy have downloadable files")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fp in sorted(project_dir.rglob("*")):
+            if fp.is_file():
+                zf.write(fp, fp.relative_to(project_dir))
+        screenshot = data_dir / "screenshots" / f"{run_id}.png"
+        if screenshot.exists() and not (project_dir / "screenshot.png").exists():
+            zf.write(screenshot, "screenshot.png")
+    buf.seek(0)
+
+    slug = (run.get("title") or f"project-{run_id}").replace(" ", "-")
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{slug}.zip"'},
+    )
 
 
 @app.post("/runs/{run_id}/retry")

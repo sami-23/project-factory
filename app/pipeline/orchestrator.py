@@ -86,6 +86,14 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
         # 2. Code generation (blocking: OpenAI + Anthropic HTTP calls)
         files = await T(generate_code, idea, log, prefs or {}, timeout=480)
 
+        # Persist files to data dir so they can be downloaded later
+        project_dir = Path(settings.data_dir) / "projects" / str(run_id)
+        project_dir.mkdir(parents=True, exist_ok=True)
+        for fname, code in files:
+            fp = project_dir / fname
+            fp.parent.mkdir(parents=True, exist_ok=True)
+            fp.write_text(code, encoding="utf-8")
+
         # 3. Test + screenshot
         screenshot_dir = Path(settings.data_dir) / "screenshots"
         screenshot_dir.mkdir(parents=True, exist_ok=True)
@@ -138,6 +146,8 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
 
         # 5. Write README (blocking: Anthropic HTTP call)
         readme = await T(write_readme, idea, files, stdout, github_url, log)
+        if readme:
+            (project_dir / "README.md").write_text(readme, encoding="utf-8")
 
         # 6. Push (blocking: git subprocess)
         await T(push_all, repo, idea, files, readme, screenshot_path if screenshot_path.exists() else None, log)
