@@ -140,7 +140,7 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
         readme = await T(write_readme, idea, files, stdout, github_url, log)
 
         # 6. Push (blocking: git subprocess)
-        await T(push_all, repo, files, readme, screenshot_path if screenshot_path.exists() else None, log)
+        await T(push_all, repo, idea, files, readme, screenshot_path if screenshot_path.exists() else None, log)
 
         db.update_run(run_id, status="success")
         log(f"🎉 Done! {github_url}")
