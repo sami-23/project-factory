@@ -91,6 +91,25 @@ def get_recent_titles(n: int = 30) -> list[str]:
     return [r[0] for r in rows]
 
 
+def cleanup_stuck_runs():
+    """Mark any runs left in 'running' state (from a crashed/restarted server) as failed."""
+    conn = sqlite3.connect(_db_path())
+    conn.execute("UPDATE projects SET status = 'failed' WHERE status = 'running'")
+    conn.commit()
+    conn.close()
+
+
+def get_last_run() -> dict | None:
+    """Return the most recently created run regardless of status."""
+    conn = sqlite3.connect(_db_path())
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT * FROM projects ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
 def delete_run(run_id: int):
     conn = sqlite3.connect(_db_path())
     conn.execute("DELETE FROM projects WHERE id = ?", (run_id,))

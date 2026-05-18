@@ -23,6 +23,7 @@ templates = Jinja2Templates(directory="app/templates")
 @app.on_event("startup")
 def startup():
     db.init_db()
+    db.cleanup_stuck_runs()  # any 'running' from before this restart → 'failed'
     start_scheduler()
 
 
@@ -111,21 +112,40 @@ async def retry_run(run_id: int, background_tasks: BackgroundTasks):
 async def stream_logs():
     async def generate():
         sent = 0
-        idle = 0
-        while idle < 30:
+        heartbeat = 0
+
+        # Wait up to 5s for the pipeline to actually start
+        for _ in range(5):
+            if is_running():
+                break
+            await asyncio.sleep(1)
+
+        if not is_running():
+            yield "data: __done__\n\n"
+            return
+
+        # Stream while the pipeline is running
+        while is_running():
             current = await asyncio.to_thread(db.get_current_run)
             if current:
-                idle = 0
                 lines = (current.get("log") or "").splitlines()
                 for line in lines[sent:]:
                     yield f"data: {json.dumps(line)}\n\n"
+                    heartbeat = 0
                 sent = len(lines)
-                if current["status"] != "running":
-                    yield "data: __done__\n\n"
-                    return
-            else:
-                idle += 1
+            heartbeat += 1
+            if heartbeat >= 15:
+                yield ": heartbeat\n\n"  # keeps proxy from closing idle connection
+                heartbeat = 0
             await asyncio.sleep(1)
+
+        # Pipeline finished — drain any final log lines then signal done
+        last = await asyncio.to_thread(db.get_last_run)
+        if last:
+            lines = (last.get("log") or "").splitlines()
+            for line in lines[sent:]:
+                yield f"data: {json.dumps(line)}\n\n"
+        yield "data: __done__\n\n"
 
     return StreamingResponse(
         generate(),

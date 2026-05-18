@@ -62,6 +62,11 @@ def _run_python(idea: dict, tmpdir: Path, log) -> tuple[bool, str, str]:
     )
     ok = r.returncode == 0
     log(f"{'✅' if ok else '❌'} exit {r.returncode}")
+    if not ok:
+        if r.stderr:
+            log(f"  stderr: {r.stderr[:500]}")
+        if r.stdout:
+            log(f"  stdout: {r.stdout[:300]}")
     return ok, r.stdout, r.stderr
 
 
@@ -82,6 +87,11 @@ def _run_node(idea: dict, tmpdir: Path, log) -> tuple[bool, str, str]:
     )
     ok = r.returncode == 0
     log(f"{'✅' if ok else '❌'} exit {r.returncode}")
+    if not ok:
+        if r.stderr:
+            log(f"  stderr: {r.stderr[:500]}")
+        if r.stdout:
+            log(f"  stdout: {r.stdout[:300]}")
     return ok, r.stdout, r.stderr
 
 
