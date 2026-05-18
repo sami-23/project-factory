@@ -23,13 +23,34 @@ _LANG_HINTS = {
 }
 
 
-def generate_code(idea: dict, log) -> list[tuple[str, str]]:
+def generate_code(idea: dict, log, prefs: dict = None) -> list[tuple[str, str]]:
+    prefs = prefs or {}
+    manual = prefs.get("manual", False)
+
     settings = get_settings()
     oai = OpenAI(api_key=settings.openai_api_key, timeout=180.0)
     claude = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=180.0)
 
     lang = idea["language"]
     web_line = f"Web port: {idea['web_port']}" if idea.get("web_port") else ""
+
+    if manual:
+        size_rules = (
+            "- Split into 6-10 files with strict separation of concerns\n"
+            "- Total code 1000-2000 lines — full, production-quality implementation\n"
+            "- For web: multiple pages/views with client-side fetch calls to a JSON API;\n"
+            "  polished responsive CSS; real data models with CRUD or search operations\n"
+            "- Include meaningful algorithms, data processing, or game/simulation logic\n"
+            "- Every file should be substantial — no thin wrappers"
+        )
+    else:
+        size_rules = (
+            "- Split into 3-6 files with clear separation of concerns (server, routes, helpers, data, frontend)\n"
+            "- Total code should be 400-800 lines — make it real, not a toy\n"
+            "- For web: build a proper multi-page or multi-section UI with navigation, not a single static page"
+        )
+
+    max_tokens = 16000
 
     gpt_prompt = f"""Generate a complete, working implementation of this project.
 
@@ -46,12 +67,10 @@ Run command: {idea['run_command']}
 
 Rules:
 - Write complete, runnable code — no TODO stubs or placeholders
-- Split into 3-6 files with clear separation of concerns (server, routes, helpers, data, frontend)
-- Total code should be 400-800 lines — make it real, not a toy
+{size_rules}
 - Use Markdown code blocks with filename on the opening fence: ```python filename.py
 - Generate ALL necessary files (source + config + deps file)
 - For web: serve on the specified port, include hardcoded sample/demo data so it works immediately
-- For web: build a proper multi-page or multi-section UI with navigation, not a single static page
 - CRITICAL for web: if the server serves any HTML/CSS/JS static files, those files MUST be generated too
   - NEVER reference public/index.html, templates/index.html, or any static file unless you include it
   - Every file the server reads from disk must be in your output
@@ -60,11 +79,11 @@ Rules:
 - For data_viz: save the final image to output.png
 - Only output code blocks, nothing else"""
 
-    log("⚡ GPT-4o generating code...")
+    log(f"⚡ GPT-4o generating code {'(large build)' if manual else ''}...")
     gpt_resp = oai.chat.completions.create(
         model=GPT_MODEL,
         messages=[{"role": "user", "content": gpt_prompt}],
-        max_tokens=16000,
+        max_tokens=max_tokens,
     )
     raw = gpt_resp.choices[0].message.content.strip()
     # Log first fence header raw so filename format is visible in logs
@@ -107,7 +126,7 @@ If everything is correct, return the files unchanged. Only output code blocks.""
     log("🔍 Claude reviewing and fixing code...")
     review_resp = claude.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=16000,
+        max_tokens=max_tokens,
         messages=[{"role": "user", "content": review_prompt}],
     )
     reviewed = _parse_blocks(review_resp.content[0].text.strip())

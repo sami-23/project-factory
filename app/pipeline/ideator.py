@@ -31,8 +31,28 @@ def generate_idea(log, prefs: dict = None) -> dict:
         else ""
     )
 
-    prompt = f"""You are a creative software project generator. Invent a unique, fun programming project.
+    manual = prefs.get("manual", False)
+    if manual:
+        scope_lines = (
+            "- 1000-2000 lines of code across 6-10 files\n"
+            "- Production-quality architecture: models, services, routes, helpers, frontend all separate\n"
+            "- For web: multiple distinct pages/views, a REST API layer, real data models,\n"
+            "  client-side interactivity (fetch/XHR calls), polished responsive CSS\n"
+            "- Non-trivial algorithms, data processing pipelines, or meaningful stateful logic\n"
+            "- Think 'impressive portfolio project', not 'quick demo'"
+        )
+        mode_note = "This is a LARGE manual build — be ambitious. Make it genuinely impressive."
+    else:
+        scope_lines = (
+            "- 400-800 lines of code total, split across 3-6 files (not one giant file)\n"
+            "- Real architecture: separate concerns (e.g. server, routes, data layer, frontend, helpers)\n"
+            "- Must produce visible output: web UI with multiple views/pages, rich terminal output, or a saved image\n"
+            "- Include at least one interesting data structure, algorithm, or non-trivial logic"
+        )
+        mode_note = ""
 
+    prompt = f"""You are a creative software project generator. Invent a unique, fun programming project.
+{mode_note}
 Already built — avoid similar ideas AND similar categories:
 {avoid_block}
 {cat_override}
@@ -54,11 +74,8 @@ Categories (pick the least-used one relative to the list above):
 12. Retro / nostalgia (ASCII art, old-school terminal animation, BBS-style board)
 
 Requirements:
-- 400-800 lines of code total, split across 3-6 files (not one giant file)
-- Real architecture: separate concerns (e.g. server, routes, data layer, frontend, helpers)
-- Must produce visible output: web UI with multiple views/pages, rich terminal output, or a saved image
+{scope_lines}
 - {lang_line}
-- Include at least one interesting data structure, algorithm, or non-trivial logic
 - Interesting and delightful — avoid generic "hello world" style projects
 - NO particle systems, NO space/galaxy themes, NO generic canvas animations{type_line}
 

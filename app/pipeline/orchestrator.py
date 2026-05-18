@@ -84,7 +84,7 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
         )
 
         # 2. Code generation (blocking: OpenAI + Anthropic HTTP calls)
-        files = await T(generate_code, idea, log, timeout=480)
+        files = await T(generate_code, idea, log, prefs or {}, timeout=480)
 
         # 3. Test + screenshot
         screenshot_dir = Path(settings.data_dir) / "screenshots"

@@ -292,9 +292,10 @@ function startBuild() {
     language:     document.getElementById('prefLang').value,
     category:     document.getElementById('prefCategory').value,
     project_type: document.getElementById('prefType').value,
+    manual:       true,  // manual builds always use the larger scope
   };
-  // Strip empty values so ideator treats them as "no preference"
-  Object.keys(prefs).forEach(k => { if (!prefs[k]) delete prefs[k]; });
+  // Strip empty string values so ideator treats them as "no preference"
+  Object.keys(prefs).forEach(k => { if (prefs[k] === '') delete prefs[k]; });
 
   const btn = document.getElementById('buildBtn');
   btn.disabled = true;
