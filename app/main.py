@@ -51,6 +51,8 @@ def dashboard(request: Request):
     runs = db.get_all_runs()
     for run in runs:
         run["has_download"] = (data_dir / "projects" / str(run["id"])).exists()
+        ts = run.get("tech_stack")
+        run["tech_stack_list"] = json.loads(ts) if ts else []
     current = db.get_current_run()
     return templates.TemplateResponse(
         "index.html",

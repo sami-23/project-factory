@@ -90,6 +90,7 @@ Respond with ONLY a JSON object, no markdown fences:
   "description": "2-3 sentences on what it does and why it is cool",
   "language": "python",
   "project_type": "web | cli | data_viz",
+  "category": "exact category name from the list above (e.g. 'Mini game', 'Music / audio')",
   "tech_stack": ["lib1", "lib2"],
   "entry_point": "server.js",
   "run_command": "node server.js",

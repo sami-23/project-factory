@@ -19,6 +19,8 @@ def init_db():
             description TEXT,
             language    TEXT,
             project_type TEXT,
+            category    TEXT,
+            tech_stack  TEXT,
             github_url  TEXT,
             screenshot_path TEXT,
             status      TEXT NOT NULL DEFAULT 'running',
@@ -27,11 +29,12 @@ def init_db():
             created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # Migration for existing databases that predate idea_json column
-    try:
-        conn.execute("ALTER TABLE projects ADD COLUMN idea_json TEXT")
-    except Exception:
-        pass
+    # Migrations for existing databases
+    for col in ("idea_json TEXT", "category TEXT", "tech_stack TEXT"):
+        try:
+            conn.execute(f"ALTER TABLE projects ADD COLUMN {col}")
+        except Exception:
+            pass
     conn.commit()
     conn.close()
 

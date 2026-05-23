@@ -8,6 +8,7 @@
   :root {
     --bg:      #0d1117;
     --surface: #161b22;
+    --surface2:#1c2128;
     --border:  #30363d;
     --text:    #e6edf3;
     --muted:   #8b949e;
@@ -16,100 +17,170 @@
     --red:     #f85149;
     --yellow:  #d29922;
     --purple:  #bc8cff;
+    --orange:  #f0883e;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
 
-  /* header */
-  header { border-bottom: 1px solid var(--border); padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; }
-  .logo { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: -0.3px; }
-  .logo span { color: var(--muted); font-weight: 400; font-size: 14px; margin-left: 10px; }
+  /* ── header ── */
+  header { border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .logo { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: -0.3px; white-space: nowrap; }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
   .build-btn {
     background: var(--accent); color: #0d1117; border: none; border-radius: 6px;
-    padding: 8px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
-    transition: opacity .15s;
+    padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: opacity .15s; white-space: nowrap;
   }
   .build-btn:hover { opacity: .85; }
   .build-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 32px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 28px 32px; }
 
-  /* status bar */
-  .stats { display: flex; gap: 24px; margin-bottom: 32px; flex-wrap: wrap; }
-  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 20px; min-width: 140px; }
-  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 4px; }
-  .stat-value { font-size: 22px; font-weight: 700; }
+  /* ── stats row ── */
+  .stats { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; min-width: 120px; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 3px; }
+  .stat-value { font-size: 20px; font-weight: 700; }
 
-  /* live log */
-  #live-section { margin-bottom: 32px; }
-  .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 12px; }
+  /* ── live log ── */
+  #live-section { margin-bottom: 28px; }
+  .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
   .log-box {
     background: #010409; border: 1px solid var(--border); border-radius: 8px;
-    padding: 16px 20px; font-family: 'Courier New', monospace; font-size: 12px;
-    line-height: 1.8; color: #c9d1d9; max-height: 320px; overflow-y: auto;
+    padding: 14px 18px; font-family: 'Courier New', monospace; font-size: 12px;
+    line-height: 1.8; color: #c9d1d9; max-height: 300px; overflow-y: auto;
   }
   .log-line { white-space: pre-wrap; }
 
-  /* history grid */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+  /* ── toolbar ── */
+  .toolbar {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 320px; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .search-input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 7px 10px 7px 32px; font-size: 13px; outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
+  .filter-select {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 7px 10px; font-size: 12px; outline: none;
+    appearance: none; cursor: pointer; min-width: 110px;
+  }
+  .filter-select:focus { border-color: var(--accent); }
+  .toolbar-right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .view-btn {
+    background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 6px; padding: 6px 10px; font-size: 14px; cursor: pointer; line-height: 1;
+  }
+  .view-btn.active { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
+  .view-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .result-count { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+  /* ── grid view ── */
+  #grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
   .card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-    overflow: hidden; transition: border-color .15s, transform .15s;
+    overflow: hidden; transition: border-color .15s, transform .15s; display: flex; flex-direction: column;
   }
   .card:hover { border-color: var(--accent); transform: translateY(-2px); }
-  .card-img { width: 100%; height: 180px; object-fit: cover; background: #010409; display: block; }
-  .card-img-placeholder { width: 100%; height: 180px; background: linear-gradient(135deg,#161b22 0%,#0d1117 100%); display: flex; align-items: center; justify-content: center; color: var(--border); font-size: 40px; }
-  .card-body { padding: 16px; }
-  .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card-desc { font-size: 12px; color: var(--muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px; }
-  .card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; }
-  .badge-py  { background: #1f4a8c22; color: #79c0ff; border: 1px solid #1f4a8c55; }
-  .badge-js  { background: #d2992222; color: #e3b341; border: 1px solid #d2992255; }
-  .badge-web { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95055; }
-  .badge-cli { background: #bc8cff22; color: #bc8cff; border: 1px solid #bc8cff55; }
-  .badge-viz { background: #f0883e22; color: #f0883e; border: 1px solid #f0883e55; }
-  .badge-ok  { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95055; }
-  .badge-fail{ background: #f8514922; color: #f85149; border: 1px solid #f8514955; }
-  .badge-run { background: #d2992222; color: #d29922; border: 1px solid #d2992255; }
+  .card-img { width: 100%; height: 160px; object-fit: cover; background: #010409; display: block; flex-shrink: 0; }
+  .card-img-placeholder {
+    width: 100%; height: 160px; background: linear-gradient(135deg,#161b22 0%,#0d1117 100%);
+    display: flex; align-items: center; justify-content: center; color: var(--border); font-size: 36px; flex-shrink: 0;
+  }
+  .card-body { padding: 14px; display: flex; flex-direction: column; flex: 1; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-desc { font-size: 12px; color: var(--muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px; flex: 1; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .card-date { font-size: 11px; color: var(--muted); margin-left: auto; }
-  .card-link { color: var(--accent); font-size: 12px; text-decoration: none; }
-  .card-link:hover { text-decoration: underline; }
 
-  .empty { text-align: center; padding: 60px; color: var(--muted); }
-  .empty h3 { font-size: 18px; margin-bottom: 8px; }
+  /* ── list view ── */
+  #list-view { display: none; flex-direction: column; gap: 8px; }
+  .list-row {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    display: flex; align-items: center; gap: 14px; padding: 10px 14px;
+    transition: border-color .12s;
+  }
+  .list-row:hover { border-color: var(--accent); }
+  .list-thumb {
+    width: 64px; height: 48px; border-radius: 5px; object-fit: cover;
+    background: #010409; flex-shrink: 0;
+  }
+  .list-thumb-placeholder {
+    width: 64px; height: 48px; border-radius: 5px; flex-shrink: 0;
+    background: linear-gradient(135deg,#161b22 0%,#0d1117 100%);
+    display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--border);
+  }
+  .list-info { flex: 1; min-width: 0; }
+  .list-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+  .list-desc { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-tags { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; }
+  .list-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
+  .list-date { font-size: 11px; color: var(--muted); flex-shrink: 0; min-width: 80px; text-align: right; }
 
-  .running-indicator { display: flex; align-items: center; gap: 8px; color: var(--yellow); font-size: 13px; }
-  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); animation: pulse 1.2s ease-in-out infinite; }
+  /* ── badges ── */
+  .badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; cursor: default; white-space: nowrap; }
+  .badge.clickable { cursor: pointer; transition: opacity .12s; }
+  .badge.clickable:hover { opacity: .7; }
+  .badge-py   { background: #1f4a8c22; color: #79c0ff; border: 1px solid #1f4a8c55; }
+  .badge-js   { background: #d2992222; color: #e3b341; border: 1px solid #d2992255; }
+  .badge-web  { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95055; }
+  .badge-cli  { background: #bc8cff22; color: #bc8cff; border: 1px solid #bc8cff55; }
+  .badge-viz  { background: #f0883e22; color: #f0883e; border: 1px solid #f0883e55; }
+  .badge-ok   { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95055; }
+  .badge-fail { background: #f8514922; color: #f85149; border: 1px solid #f8514955; }
+  .badge-run  { background: #d2992222; color: #d29922; border: 1px solid #d2992255; }
+  .badge-tag  { background: #30363d44; color: var(--muted); border: 1px solid var(--border); }
+  .badge-tag.clickable:hover { color: var(--accent); border-color: var(--accent); opacity: 1; }
+
+  /* ── action buttons ── */
+  .action-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;
+    text-decoration: none; display: inline-block; white-space: nowrap;
+    transition: border-color .12s, color .12s;
+  }
+  .action-btn:hover               { border-color: var(--accent); color: var(--accent); }
+  .action-btn.retry:hover         { border-color: var(--yellow); color: var(--yellow); }
+  .action-btn.delete:hover        { border-color: var(--red); color: var(--red); }
+  .action-btn.download:hover      { border-color: var(--green); color: var(--green); }
+  .action-btn.github:hover        { border-color: var(--purple); color: var(--purple); }
+
+  /* ── empty/no-results ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty h3 { font-size: 16px; margin-bottom: 8px; color: var(--text); }
+
+  /* ── running indicator ── */
+  .running-indicator { display: flex; align-items: center; gap: 8px; color: var(--yellow); font-size: 12px; }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); animation: pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-  .log-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
-  .log-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .retry-btn { background: none; border: 1px solid var(--yellow); color: var(--yellow); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
-  .retry-btn:hover { background: var(--yellow); color: #0d1117; }
-  .delete-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
-  .delete-btn:hover { border-color: var(--red); color: var(--red); }
-  .download-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; text-decoration: none; display: inline-block; }
-  .download-btn:hover { border-color: var(--green); color: var(--green); }
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
+
+  /* ── modals ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 100; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: 90%; max-width: 780px; max-height: 80vh; display: flex; flex-direction: column; }
-  .modal-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: 90%; max-width: 820px; max-height: 82vh; display: flex; flex-direction: column; }
+  .modal-header { padding: 13px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 14px; }
   .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
   .modal-close:hover { color: var(--text); }
   .modal-log { padding: 16px 18px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.7; color: #c9d1d9; overflow-y: auto; white-space: pre-wrap; flex: 1; }
 
   /* build options modal */
-  .build-modal { max-width: 460px; }
-  .build-modal .modal-body { padding: 20px 18px; }
-  .field { margin-bottom: 16px; }
-  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .build-modal-box { max-width: 460px; }
+  .build-modal-box .modal-body { padding: 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
   .field select {
     width: 100%; background: #010409; border: 1px solid var(--border); color: var(--text);
-    border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none;
+    border-radius: 6px; padding: 7px 10px; font-size: 13px; outline: none;
     appearance: none; cursor: pointer;
   }
   .field select:focus { border-color: var(--accent); }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--border); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 13px 18px; border-top: 1px solid var(--border); }
   .btn-secondary { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
   .btn-secondary:hover { border-color: var(--accent); }
 </style>
@@ -118,13 +189,18 @@
 
 <header>
   <div>
-    <div class="logo">⚙️ Project Factory <span>Daily AI-generated GitHub projects</span></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:3px">git:{{ version }}</div>
+    <div class="logo">⚙️ Project Factory</div>
+    <div class="logo-sub">Daily AI-generated GitHub projects &nbsp;·&nbsp; git:{{ version }}</div>
   </div>
-  <button class="build-btn" id="buildBtn" {% if is_running %}disabled{% endif %}
-          onclick="{% if not is_running %}openBuildModal(){% endif %}">
-    {% if is_running %}⏳ Building…{% else %}▶ Build Now{% endif %}
-  </button>
+  <div class="header-right">
+    {% if is_running %}
+    <span class="running-indicator"><span class="pulse"></span> Building…</span>
+    {% endif %}
+    <button class="build-btn" id="buildBtn" {% if is_running %}disabled{% endif %}
+            onclick="{% if not is_running %}openBuildModal(){% endif %}">
+      {% if is_running %}⏳ Building…{% else %}▶ Build Now{% endif %}
+    </button>
+  </div>
 </header>
 
 <main>
@@ -152,63 +228,173 @@
     </div>
   </div>
 
-  <!-- Live log (only when running) -->
+  <!-- Live log -->
   <div id="live-section" style="display:{% if is_running %}block{% else %}none{% endif %}">
     <div class="section-title">
-      <span class="running-indicator">
-        <span class="pulse"></span> Live Build Log
-      </span>
+      <span class="running-indicator"><span class="pulse"></span> Live Build Log</span>
     </div>
     <div class="log-box" id="logBox"></div>
   </div>
 
-  <!-- History -->
-  <div class="section-title" style="margin-bottom:16px">
-    {% if runs %}Build History ({{ runs | length }}){% else %}No builds yet{% endif %}
-  </div>
-
+  <!-- Toolbar -->
   {% if runs %}
-  <div class="grid">
-    {% for run in runs %}
-    <div class="card">
-      {% if run.screenshot_path %}
-        <img class="card-img" src="/screenshots/{{ run.id }}.png" alt="screenshot" loading="lazy">
-      {% else %}
-        <div class="card-img-placeholder">
-          {% if run.status == 'running' %}⏳{% elif run.status == 'failed' %}❌{% else %}🤖{% endif %}
-        </div>
-      {% endif %}
-      <div class="card-body">
-        <div class="card-title">{{ run.title or 'Generating…' }}</div>
-        <div class="card-desc">{{ run.description or '' }}</div>
-        <div class="card-meta">
-          {% if run.language %}
-            <span class="badge badge-{{ 'py' if run.language == 'python' else 'js' }}">{{ run.language }}</span>
-          {% endif %}
-          {% if run.project_type %}
-            <span class="badge badge-{{ run.project_type[:3] }}">{{ run.project_type }}</span>
-          {% endif %}
-          <span class="badge badge-{{ 'ok' if run.status == 'success' else ('run' if run.status == 'running' else 'fail') }}">
-            {{ run.status }}
-          </span>
-          {% if run.github_url %}
-            <a class="card-link" href="{{ run.github_url }}" target="_blank">GitHub →</a>
-          {% endif %}
-          <span class="card-date">{{ run.date }}</span>
-          <button class="log-btn" onclick="showLog({{ run.id }})">Logs</button>
-          {% if run.has_download %}
-          <a class="download-btn" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>
-          {% endif %}
-          {% if run.status == 'failed' %}
-          <button class="retry-btn" onclick="retryRun({{ run.id }})">↺ Retry</button>
-          <button class="delete-btn" onclick="deleteRun({{ run.id }})">✕ Delete</button>
-          {% endif %}
-        </div>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
+      </svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search projects…" oninput="applyFilters()">
+    </div>
+
+    <select class="filter-select" id="filterLang" onchange="applyFilters()">
+      <option value="">All Languages</option>
+      <option value="python">Python</option>
+      <option value="javascript">JavaScript</option>
+    </select>
+
+    <select class="filter-select" id="filterType" onchange="applyFilters()">
+      <option value="">All Types</option>
+      <option value="web">Web</option>
+      <option value="cli">CLI</option>
+      <option value="data_viz">Data Viz</option>
+    </select>
+
+    <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+      <option value="">All Status</option>
+      <option value="success">Success</option>
+      <option value="failed">Failed</option>
+    </select>
+
+    <select class="filter-select" id="filterCategory" onchange="applyFilters()" style="min-width:150px">
+      <option value="">All Categories</option>
+      <option value="Mini game">Mini Game</option>
+      <option value="Music / audio">Music / Audio</option>
+      <option value="Data tool">Data Tool</option>
+      <option value="Generative art">Generative Art</option>
+      <option value="Productivity">Productivity</option>
+      <option value="Science / math">Science / Math</option>
+      <option value="Finance / numbers">Finance / Numbers</option>
+      <option value="Language / text">Language / Text</option>
+      <option value="Geography / maps">Geography / Maps</option>
+      <option value="Fun / novelty">Fun / Novelty</option>
+      <option value="Developer tool">Developer Tool</option>
+      <option value="Retro / nostalgia">Retro / Nostalgia</option>
+    </select>
+
+    <div class="toolbar-right">
+      <span class="result-count" id="resultCount"></span>
+      <button class="view-btn active" id="btnGrid" onclick="setView('grid')" title="Grid view">⊞</button>
+      <button class="view-btn" id="btnList" onclick="setView('list')" title="List view">≡</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Grid view -->
+  <div id="grid-view">
+  {% for run in runs %}
+  <div class="card" data-id="{{ run.id }}"
+       data-lang="{{ run.language or '' }}"
+       data-type="{{ run.project_type or '' }}"
+       data-status="{{ run.status }}"
+       data-category="{{ run.category or '' }}"
+       data-title="{{ (run.title or '') | lower }}"
+       data-desc="{{ (run.description or '') | lower }}"
+       data-stack="{{ run.tech_stack_list | join(' ') | lower }}">
+    {% if run.screenshot_path %}
+      <img class="card-img" src="/screenshots/{{ run.id }}.png" alt="screenshot" loading="lazy">
+    {% else %}
+      <div class="card-img-placeholder">
+        {% if run.status == 'running' %}⏳{% elif run.status == 'failed' %}❌{% else %}🤖{% endif %}
+      </div>
+    {% endif %}
+    <div class="card-body">
+      <div class="card-title" title="{{ run.title or 'Generating…' }}">{{ run.title or 'Generating…' }}</div>
+      <div class="card-desc">{{ run.description or '' }}</div>
+      <div class="card-tags">
+        {% if run.language %}
+          <span class="badge badge-{{ 'py' if run.language == 'python' else 'js' }} clickable" onclick="filterBy('lang','{{ run.language }}')">{{ run.language }}</span>
+        {% endif %}
+        {% if run.project_type %}
+          <span class="badge badge-{{ run.project_type[:3] }} clickable" onclick="filterBy('type','{{ run.project_type }}')">{{ run.project_type }}</span>
+        {% endif %}
+        {% if run.category %}
+          <span class="badge badge-tag clickable" onclick="filterBy('category','{{ run.category }}')">{{ run.category }}</span>
+        {% endif %}
+        {% for lib in run.tech_stack_list[:3] %}
+          <span class="badge badge-tag clickable" onclick="filterByTag('{{ lib }}')">{{ lib }}</span>
+        {% endfor %}
+      </div>
+      <div class="card-meta">
+        <span class="badge badge-{{ 'ok' if run.status == 'success' else ('run' if run.status == 'running' else 'fail') }}">{{ run.status }}</span>
+        <span class="card-date">{{ run.date }}</span>
+        <button class="action-btn" onclick="showLog({{ run.id }})">Logs</button>
+        {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
+        {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
+        {% if run.status == 'failed' %}
+          <button class="action-btn retry" onclick="retryRun({{ run.id }})">↺ Retry</button>
+          <button class="action-btn delete" onclick="deleteRun({{ run.id }})">✕</button>
+        {% endif %}
       </div>
     </div>
-    {% endfor %}
   </div>
-  {% else %}
+  {% endfor %}
+  </div>
+
+  <!-- List view -->
+  <div id="list-view">
+  {% for run in runs %}
+  <div class="list-row" data-id="{{ run.id }}"
+       data-lang="{{ run.language or '' }}"
+       data-type="{{ run.project_type or '' }}"
+       data-status="{{ run.status }}"
+       data-category="{{ run.category or '' }}"
+       data-title="{{ (run.title or '') | lower }}"
+       data-desc="{{ (run.description or '') | lower }}"
+       data-stack="{{ run.tech_stack_list | join(' ') | lower }}">
+    {% if run.screenshot_path %}
+      <img class="list-thumb" src="/screenshots/{{ run.id }}.png" alt="screenshot" loading="lazy">
+    {% else %}
+      <div class="list-thumb-placeholder">{% if run.status == 'running' %}⏳{% elif run.status == 'failed' %}❌{% else %}🤖{% endif %}</div>
+    {% endif %}
+    <div class="list-info">
+      <div class="list-title" title="{{ run.title or 'Generating…' }}">{{ run.title or 'Generating…' }}</div>
+      <div class="list-desc">{{ run.description or '' }}</div>
+    </div>
+    <div class="list-tags">
+      {% if run.language %}
+        <span class="badge badge-{{ 'py' if run.language == 'python' else 'js' }} clickable" onclick="filterBy('lang','{{ run.language }}')">{{ run.language }}</span>
+      {% endif %}
+      {% if run.project_type %}
+        <span class="badge badge-{{ run.project_type[:3] }} clickable" onclick="filterBy('type','{{ run.project_type }}')">{{ run.project_type }}</span>
+      {% endif %}
+      {% if run.category %}
+        <span class="badge badge-tag clickable" onclick="filterBy('category','{{ run.category }}')">{{ run.category }}</span>
+      {% endif %}
+      {% for lib in run.tech_stack_list[:4] %}
+        <span class="badge badge-tag clickable" onclick="filterByTag('{{ lib }}')">{{ lib }}</span>
+      {% endfor %}
+    </div>
+    <div class="list-actions">
+      <span class="badge badge-{{ 'ok' if run.status == 'success' else ('run' if run.status == 'running' else 'fail') }}">{{ run.status }}</span>
+      <button class="action-btn" onclick="showLog({{ run.id }})">Logs</button>
+      {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
+      {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
+      {% if run.status == 'failed' %}
+        <button class="action-btn retry" onclick="retryRun({{ run.id }})">↺ Retry</button>
+        <button class="action-btn delete" onclick="deleteRun({{ run.id }})">✕</button>
+      {% endif %}
+    </div>
+    <div class="list-date">{{ run.date }}</div>
+  </div>
+  {% endfor %}
+  </div>
+
+  <div class="empty" id="noResults" style="display:none">
+    <h3>No matching projects</h3>
+    <p>Try a different search or clear the filters.</p>
+  </div>
+
+  {% if not runs %}
   <div class="empty">
     <h3>No projects built yet</h3>
     <p>Hit "Build Now" to generate and publish your first project.</p>
@@ -219,13 +405,13 @@
 
 <!-- Build options modal -->
 <div class="modal-overlay" id="buildModal" onclick="if(event.target===this)closeBuildModal()">
-  <div class="modal build-modal">
+  <div class="modal build-modal-box">
     <div class="modal-header">
       <span>Build Options</span>
       <button class="modal-close" onclick="closeBuildModal()">×</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:12px;color:var(--muted);margin-bottom:18px">Leave any option as <em>Any</em> to let the AI decide freely.</p>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Leave any option as <em>Any</em> to let the AI decide freely.</p>
       <div class="field">
         <label>Language</label>
         <select id="prefLang">
@@ -282,14 +468,74 @@
 
 <script>
 let evtSource = null;
+let currentView = 'grid';
 
-function openBuildModal() {
-  document.getElementById('buildModal').classList.add('open');
+// ── view toggle ───────────────────────────────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  document.getElementById('grid-view').style.display = v === 'grid' ? 'grid' : 'none';
+  document.getElementById('list-view').style.display = v === 'list' ? 'flex' : 'none';
+  document.getElementById('btnGrid').classList.toggle('active', v === 'grid');
+  document.getElementById('btnList').classList.toggle('active', v === 'list');
+  applyFilters();
 }
 
-function closeBuildModal() {
-  document.getElementById('buildModal').classList.remove('open');
+// ── filtering ─────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const q       = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+  const lang    = document.getElementById('filterLang')?.value || '';
+  const type    = document.getElementById('filterType')?.value || '';
+  const status  = document.getElementById('filterStatus')?.value || '';
+  const cat     = document.getElementById('filterCategory')?.value || '';
+
+  const selectors = '#grid-view .card, #list-view .list-row';
+  const items = document.querySelectorAll(selectors);
+  let visible = 0;
+
+  items.forEach(el => {
+    const match =
+      (!lang   || el.dataset.lang     === lang)   &&
+      (!type   || el.dataset.type     === type)   &&
+      (!status || el.dataset.status   === status) &&
+      (!cat    || el.dataset.category === cat)    &&
+      (!q      || el.dataset.title.includes(q) || el.dataset.desc.includes(q) || el.dataset.stack.includes(q));
+
+    // Only count/show items belonging to the active view
+    const inActiveView = currentView === 'grid'
+      ? el.closest('#grid-view') !== null
+      : el.closest('#list-view') !== null;
+
+    if (inActiveView) {
+      el.style.display = match ? '' : 'none';
+      if (match) visible++;
+    }
+  });
+
+  const rc = document.getElementById('resultCount');
+  if (rc) rc.textContent = visible + ' project' + (visible === 1 ? '' : 's');
+  const nr = document.getElementById('noResults');
+  if (nr) nr.style.display = visible === 0 ? 'block' : 'none';
 }
+
+// Click a badge to set the corresponding filter
+function filterBy(field, value) {
+  const map = { lang: 'filterLang', type: 'filterType', category: 'filterCategory' };
+  const el = document.getElementById(map[field]);
+  if (el) { el.value = value; applyFilters(); }
+}
+
+// Click a tech-stack tag to search for it
+function filterByTag(tag) {
+  const si = document.getElementById('searchInput');
+  if (si) { si.value = tag; applyFilters(); }
+}
+
+// Initialise count on load
+window.addEventListener('DOMContentLoaded', () => applyFilters());
+
+// ── build modal ───────────────────────────────────────────────────────────────
+function openBuildModal() { document.getElementById('buildModal').classList.add('open'); }
+function closeBuildModal() { document.getElementById('buildModal').classList.remove('open'); }
 
 function startBuild() {
   closeBuildModal();
@@ -297,9 +543,8 @@ function startBuild() {
     language:     document.getElementById('prefLang').value,
     category:     document.getElementById('prefCategory').value,
     project_type: document.getElementById('prefType').value,
-    manual:       true,  // manual builds always use the larger scope
+    manual:       true,
   };
-  // Strip empty string values so ideator treats them as "no preference"
   Object.keys(prefs).forEach(k => { if (prefs[k] === '') delete prefs[k]; });
 
   const btn = document.getElementById('buildBtn');
@@ -316,6 +561,7 @@ function startBuild() {
   });
 }
 
+// ── log stream ────────────────────────────────────────────────────────────────
 function startLogStream() {
   if (evtSource) evtSource.close();
   const box = document.getElementById('logBox');
@@ -335,14 +581,13 @@ function startLogStream() {
   };
 }
 
-// Auto-connect if already running on page load
 {% if is_running %}startLogStream();{% endif %}
 
+// ── run actions ───────────────────────────────────────────────────────────────
 async function retryRun(runId) {
   if (!confirm('Retry building this project with the same idea?')) return;
   const btn = document.getElementById('buildBtn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Building…';
+  btn.disabled = true; btn.textContent = '⏳ Building…';
   const r = await fetch(`/runs/${runId}/retry`, { method: 'POST' });
   const data = await r.json();
   if (data.status === 'started') {
@@ -350,13 +595,12 @@ async function retryRun(runId) {
     startLogStream();
   } else {
     alert(data.detail || data.message || 'Could not start retry');
-    btn.disabled = false;
-    btn.textContent = '▶ Build Now';
+    btn.disabled = false; btn.textContent = '▶ Build Now';
   }
 }
 
 async function deleteRun(runId) {
-  if (!confirm('Delete this failed run? This cannot be undone.')) return;
+  if (!confirm('Delete this run? This cannot be undone.')) return;
   await fetch(`/runs/${runId}`, { method: 'DELETE' });
   location.reload();
 }
@@ -370,9 +614,12 @@ async function showLog(runId) {
   document.getElementById('modalLog').textContent = data.log || '(no log recorded)';
 }
 
-function closeModal() {
-  document.getElementById('modalOverlay').classList.remove('open');
-}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+// Close modals on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeBuildModal(); }
+});
 </script>
 </body>
 </html>

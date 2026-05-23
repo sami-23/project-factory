@@ -80,6 +80,8 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
             description=idea["description"],
             language=idea["language"],
             project_type=idea["project_type"],
+            category=idea.get("category"),
+            tech_stack=json.dumps(idea.get("tech_stack", [])),
             idea_json=json.dumps(idea),
         )
 
