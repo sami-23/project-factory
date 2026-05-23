@@ -6,6 +6,28 @@ from app.config import get_settings
 GPT_MODEL = "gpt-4o"
 CLAUDE_MODEL = "claude-sonnet-4-6"
 
+_WEB_UI_RULES = """
+CRITICAL — Web UI design quality (this is non-negotiable):
+- NEVER use a plain white or light-gray background. Use a DARK theme or a bold, vibrant color scheme.
+- CSS custom properties are required: define --bg, --surface, --accent, --text, --muted at :root
+- Use a CSS framework via CDN for rapid polish — pick ONE:
+    Bootstrap 5 dark:  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+                       Then set <html data-bs-theme="dark"> on the html element.
+    Tailwind CSS CDN:  <script src="https://cdn.tailwindcss.com"></script>  (add darkMode:'class' config)
+- Additionally load a clean font:
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    body { font-family: 'Inter', sans-serif; }
+- Structure every page with: a sticky header/navbar with the app name and nav links, a main content area, proper footer
+- Use card components with rounded corners (border-radius ≥ 8px), subtle shadows, and hover lift (transform: translateY(-2px))
+- All interactive elements must have visible hover states and smooth transitions (transition: all 0.2s ease)
+- Gradient accents are encouraged: use linear-gradient() on headers, hero sections, or key buttons
+- Include at least one icon set via CDN, e.g. Bootstrap Icons:
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+- The result must look like a real SaaS product or portfolio piece — NOT a university assignment
+"""
+
 _LANG_HINTS = {
     "python": (
         "Use only stdlib + well-known pip packages that ship pre-built wheels "
@@ -56,6 +78,8 @@ def generate_code(idea: dict, log, prefs: dict = None) -> list[tuple[str, str]]:
 
     max_tokens = 16000
 
+    web_ui_section = _WEB_UI_RULES if idea.get("project_type") == "web" else ""
+
     gpt_prompt = f"""Generate a complete, working implementation of this project.
 
 Title: {idea['title']}
@@ -68,7 +92,7 @@ Run command: {idea['run_command']}
 {web_line}
 
 {_LANG_HINTS.get(lang, '')}
-
+{web_ui_section}
 Rules:
 - Write complete, runnable code — no TODO stubs or placeholders
 {size_rules}
@@ -113,6 +137,15 @@ Critical checks for web projects:
 - Does the server reference any file on disk (sendFile, express.static, readFileSync, render_template, etc.)?
   If yes, that file MUST be in the file list. If it is missing, either add it or rewrite the server to inline the HTML.
 - A missing file (ENOENT or TemplateNotFound) causes errors — treat it as a critical bug.
+
+UI quality check (web projects only — this matters):
+- Does any HTML page have a plain white or light-gray body background (#fff, white, #f0f0f0, etc.)?
+  If yes, REPLACE it with a dark theme using CSS variables (--bg: #0d1117 or similar dark color).
+- Is Bootstrap 5 CDN or Tailwind CDN included? If not, ADD the Bootstrap 5 dark CDN link and set <html data-bs-theme="dark">.
+- Is a Google Fonts Inter/Roboto/Poppins link present? If not, add one and apply to body.
+- Does the page have a <nav> or sticky header with the app name? If not, add a minimal one.
+- Are there hover states + transitions on buttons and cards? If not, add them.
+- The app should look like a polished SaaS product. If it looks like a bare HTML form, upgrade the styling.
 
 Critical checks for Flask/Python web projects:
 - Scan every route for render_template('x.html') calls. For EACH call, check the file list for templates/x.html.
