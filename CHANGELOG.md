@@ -1,5 +1,24 @@
 # Project Factory — Development Log
 
+## v1.7.0 — Modern UI enforcement for generated projects (2026-05-23)
+
+### New features
+- **Dark-theme requirement**: all generated web projects must now use a dark or vibrant color scheme — plain white/gray backgrounds are banned in the prompt
+- **Bootstrap 5 dark CDN** (or Tailwind) required in every generated web page; `<html data-bs-theme="dark">` enforced
+- **Google Fonts Inter** injected via CDN link + applied to `body` in every generated web project
+- **Bootstrap Icons CDN** added for visual richness
+- **Sticky header/navbar** with app name required in all generated web UIs
+- **Card layouts** with rounded corners, box-shadow, and hover-lift (`translateY(-2px)`) enforced
+- **Smooth transitions** (`transition: all 0.2s ease`) required on all interactive elements
+- **Gradient accents** encouraged on hero sections and primary buttons
+- **CSS custom properties** (`--bg`, `--surface`, `--accent`, `--text`, `--muted`) required at `:root`
+- Claude review pass now runs a dedicated **UI quality check**: detects white backgrounds, missing frameworks, missing fonts/nav/hover states, and fixes them before the project is tested
+
+### How it works
+`_WEB_UI_RULES` constant injected into the GPT generation prompt for all `project_type == "web"` ideas. Claude's review pass applies a second verification layer and upgrades any styling that GPT skipped. Two-pass enforcement means projects that get past one check are caught by the other.
+
+---
+
 ## v1.6.0 — Dashboard UI overhaul + category tracking (2026-05-23)
 
 ### New features
