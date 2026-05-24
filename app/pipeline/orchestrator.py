@@ -46,6 +46,10 @@ def is_running() -> bool:
     return _running
 
 
+_PLAN_TIMEOUTS = {"minimal": 90,  "standard": 120, "large": 180}
+_GEN_TIMEOUTS  = {"minimal": 300, "standard": 600, "large": 1200}
+
+
 async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None):
     global _running
     if _running:
@@ -55,6 +59,12 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
     today = date.today().isoformat()
     run_id = db.create_run(today)
     settings = get_settings()
+
+    # Auto builds (prefs=None, not a retry) default to minimal
+    if prefs is None and retry_idea is None:
+        prefs = {"size": "minimal"}
+    prefs = prefs or {}
+    size = prefs.get("size", "standard")
 
     def log(msg: str):
         print(msg, flush=True)
@@ -66,14 +76,14 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
         return await asyncio.wait_for(asyncio.to_thread(fn, *args), timeout=timeout)
 
     try:
-        log(f"🚀 Pipeline started — {today} | v{VERSION}")
+        log(f"🚀 Pipeline started — {today} | v{VERSION} | size={size}")
 
         # 1. Idea — skip if retrying a known idea
         if retry_idea:
             idea = retry_idea
             log(f"🔄 Retrying: \"{idea['title']}\" ({idea['language']}, {idea['project_type']})")
         else:
-            idea = await T(generate_idea, log, prefs or {})
+            idea = await T(generate_idea, log, prefs)
 
         db.update_run(
             run_id,
@@ -84,13 +94,19 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
             category=idea.get("category"),
             tech_stack=json.dumps(idea.get("tech_stack", [])),
             idea_json=json.dumps(idea),
+            build_size=size,
         )
 
         # 2. Architecture planning (blocking: Anthropic HTTP call)
-        plan = await T(plan_project, idea, log, prefs or {}, timeout=120)
+        plan, plan_cost = await T(plan_project, idea, log, prefs,
+                                  timeout=_PLAN_TIMEOUTS[size])
 
         # 3. Code generation — Claude Opus implements the plan (blocking: Anthropic HTTP call)
-        files = await T(generate_code, idea, log, prefs or {}, plan, timeout=600)
+        files, gen_cost = await T(generate_code, idea, log, prefs, plan,
+                                  timeout=_GEN_TIMEOUTS[size])
+
+        total_cost = plan_cost + gen_cost
+        db.update_run(run_id, cost_usd=round(total_cost, 4))
 
         # Persist files to data dir so they can be downloaded later
         project_dir = Path(settings.data_dir) / "projects" / str(run_id)

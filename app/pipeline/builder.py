@@ -5,6 +5,11 @@ from app.config import get_settings
 OPUS_MODEL   = "claude-opus-4-7"
 REVIEW_MODEL = "claude-sonnet-4-6"
 
+_OPUS_INPUT_COST    = 15.0 / 1_000_000
+_OPUS_OUTPUT_COST   = 75.0 / 1_000_000
+_SONNET_INPUT_COST  =  3.0 / 1_000_000
+_SONNET_OUTPUT_COST = 15.0 / 1_000_000
+
 _WEB_UI_RULES = """
 CRITICAL — Web UI design quality (this is non-negotiable):
 - NEVER use a plain white or light-gray background. Use a DARK theme or a bold, vibrant color scheme.
@@ -47,35 +52,58 @@ _LANG_HINTS = {
     ),
 }
 
-
-def generate_code(idea: dict, log, prefs: dict = None, plan: str = "") -> list[tuple[str, str]]:
-    prefs  = prefs or {}
-    manual = prefs.get("manual", False)
-    settings = get_settings()
-    claude = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=300.0)
-
-    lang = idea["language"]
-    web_line = f"Web port: {idea['web_port']}" if idea.get("web_port") else ""
-
-    if manual:
-        size_rules = (
-            "- Split into 6-10 files with strict separation of concerns\n"
+# Per-size limits
+_SIZE_CONFIG = {
+    "minimal": {
+        "size_rules": (
+            "- Split into 2-4 files — keep it simple and self-contained\n"
+            "- Total code 200-400 lines — functional but compact\n"
+            "- For web: a single-page or two-page UI is fine"
+        ),
+        "gen_tokens":    8_000,
+        "review_tokens": 4_000,
+        "api_timeout":  120.0,
+    },
+    "standard": {
+        "size_rules": (
+            "- Split into 4-7 files with clear separation of concerns (server, routes, helpers, data, frontend)\n"
+            "- Total code 600-1200 lines — make it real, not a toy\n"
+            "- For web: build a proper multi-page or multi-section UI with navigation, not a single static page"
+        ),
+        "gen_tokens":   16_000,
+        "review_tokens": 8_000,
+        "api_timeout":  300.0,
+    },
+    "large": {
+        "size_rules": (
+            "- Split into 7-10 files with strict separation of concerns\n"
             "- Total code 1500-2500 lines — full, production-quality implementation\n"
             "- For web: multiple pages/views with client-side fetch calls to a JSON API;\n"
             "  polished responsive CSS; real data models with CRUD or search operations\n"
             "- Include meaningful algorithms, data processing, or game/simulation logic\n"
             "- Every file should be substantial — no thin wrappers"
-        )
-    else:
-        size_rules = (
-            "- Split into 4-6 files with clear separation of concerns (server, routes, helpers, data, frontend)\n"
-            "- Total code 600-1200 lines — make it real, not a toy\n"
-            "- For web: build a proper multi-page or multi-section UI with navigation, not a single static page"
-        )
+        ),
+        "gen_tokens":   32_000,
+        "review_tokens": 16_000,
+        "api_timeout":  480.0,
+    },
+}
 
-    plan_section = f"\n\n## Architecture Blueprint\nFollow this spec exactly:\n\n{plan}" if plan else ""
+
+def generate_code(idea: dict, log, prefs: dict = None, plan: str = "") -> tuple[list[tuple[str, str]], float]:
+    """Generate and review project code.
+    Returns (files, estimated_cost_usd)."""
+    prefs   = prefs or {}
+    size    = prefs.get("size", "standard")
+    cfg     = _SIZE_CONFIG.get(size, _SIZE_CONFIG["standard"])
+    settings = get_settings()
+    claude  = anthropic.Anthropic(api_key=settings.anthropic_api_key,
+                                  timeout=cfg["api_timeout"])
+
+    lang    = idea["language"]
+    web_line = f"Web port: {idea['web_port']}" if idea.get("web_port") else ""
+    plan_section   = f"\n\n## Architecture Blueprint\nFollow this spec exactly:\n\n{plan}" if plan else ""
     web_ui_section = _WEB_UI_RULES if idea.get("project_type") == "web" else ""
-    max_tokens = 32000
 
     gen_prompt = f"""You are an expert software engineer. Generate a complete, fully-featured implementation of this project.
 {plan_section}
@@ -94,7 +122,7 @@ Run command: {idea['run_command']}
 {web_ui_section}
 Implementation rules:
 - Write COMPLETE, RUNNABLE code — no TODO stubs, no placeholders, no "add your logic here"
-{size_rules}
+{cfg['size_rules']}
 - Use Markdown code blocks with filename on the opening fence: ```python filename.py
 - Generate ALL necessary files (source + config + deps file)
 - Every interactive feature in the blueprint MUST be fully implemented — partial features are failures
@@ -110,12 +138,15 @@ Implementation rules:
 - For data_viz: save the final image to output.png
 - Only output code blocks, nothing else"""
 
-    log(f"⚡ Claude Opus generating code {'(large build)' if manual else ''}...")
+    log(f"⚡ Claude Opus generating code ({size} build)...")
     gen_resp = claude.messages.create(
         model=OPUS_MODEL,
-        max_tokens=max_tokens,
+        max_tokens=cfg["gen_tokens"],
         messages=[{"role": "user", "content": gen_prompt}],
     )
+    gen_cost = (gen_resp.usage.input_tokens  * _OPUS_INPUT_COST +
+                gen_resp.usage.output_tokens * _OPUS_OUTPUT_COST)
+
     raw = gen_resp.content[0].text.strip()
     first_fence = re.search(r"```[^\n]*", raw)
     if first_fence:
@@ -169,9 +200,12 @@ If everything is correct, return the files unchanged. Only output code blocks.""
     log("🔍 Claude Sonnet reviewing and fixing...")
     review_resp = claude.messages.create(
         model=REVIEW_MODEL,
-        max_tokens=16000,
+        max_tokens=cfg["review_tokens"],
         messages=[{"role": "user", "content": review_prompt}],
     )
+    review_cost = (review_resp.usage.input_tokens  * _SONNET_INPUT_COST +
+                   review_resp.usage.output_tokens * _SONNET_OUTPUT_COST)
+
     reviewed = _parse_blocks(review_resp.content[0].text.strip())
     if reviewed:
         files = reviewed
@@ -188,11 +222,13 @@ If everything is correct, return the files unchanged. Only output code blocks.""
             if tpl_path not in file_names and tpl not in file_names:
                 log(f"⚠️  render_template('{tpl}') in {fname} but '{tpl_path}' not in file list")
 
-    return files
+    total_cost = gen_cost + review_cost
+    log(f"💰 Generation cost estimate: ${total_cost:.4f} "
+        f"(Opus ${gen_cost:.4f} + Sonnet review ${review_cost:.4f})")
+    return files, total_cost
 
 
 def _parse_blocks(markdown: str) -> list[tuple[str, str]]:
-    # Handles: ```lang name.py  OR  ```lang filename=name.py
     pattern = r"```(?:[\w+-]+)?\s+(?:filename=)?([^\n`]+)\n(.*?)```"
     matches = re.findall(pattern, markdown, re.DOTALL)
     if not matches:
@@ -204,10 +240,10 @@ def _parse_blocks(markdown: str) -> list[tuple[str, str]]:
 
 def _clean_filename(name: str) -> str:
     name = name.strip()
-    name = re.sub(r"^<!--\s*|\s*-->$", "", name)        # <!-- file.html -->
-    name = re.sub(r"^/\*\s*|\s*\*/$", "", name)         # /* file.js */
-    name = re.sub(r"^//\s*", "", name)                   # // file.js
-    name = re.sub(r"^#\s*", "", name)                    # # file.py
-    name = re.sub(r"^filename=", "", name, flags=re.IGNORECASE)  # filename=server.js
+    name = re.sub(r"^<!--\s*|\s*-->$", "", name)
+    name = re.sub(r"^/\*\s*|\s*\*/$", "", name)
+    name = re.sub(r"^//\s*", "", name)
+    name = re.sub(r"^#\s*", "", name)
+    name = re.sub(r"^filename=", "", name, flags=re.IGNORECASE)
     name = re.sub(r"[^\w./_-]", "", name)
     return name.strip()

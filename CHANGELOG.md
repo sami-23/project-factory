@@ -1,3 +1,28 @@
+## v1.9.0 — Project size selector + estimated build cost (2026-05-25)
+
+### New features
+- **Project Size selector** in Build Now modal: Minimal / Standard / Large
+  - Minimal: 200–400 lines, 2–4 files, 3 features — fast & cheap (auto daily builds use this)
+  - Standard: 600–1200 lines, 4–7 files, 5–6 features (default for manual builds)
+  - Large: 1500–2500 lines, 7–10 files, 7–9 features — full production build
+- **Dynamic timeouts** scale with size: planner 90/120/180s; generation 300/600/1200s; Anthropic HTTP client timeout 120/300/480s
+- **Estimated build cost** tracked per-run from Anthropic usage tokens:
+  - Opus 4.7 generation: $15/MTok in + $75/MTok out
+  - Sonnet 4.6 (planner + review): $3/MTok in + $15/MTok out
+  - Costs logged during build and stored as `cost_usd` in DB
+  - Shown as `~$X.XXX` green badge on every card and list row
+- **Size badge** (blue) on cards showing which tier was used
+- **Auto builds are always Minimal** — scheduler injects `size: "minimal"` when prefs are absent; manual Build Now defaults to Standard
+
+### Changes
+- `planner.py`: `manual` bool replaced with `size` tier; returns `(plan, cost)` tuple
+- `builder.py`: `_SIZE_CONFIG` dict drives lines/files/features/token budgets/timeouts per tier; returns `(files, cost)` tuple; removed `manual` bool
+- `orchestrator.py`: `_PLAN_TIMEOUTS` / `_GEN_TIMEOUTS` dicts; auto-injects `size: "minimal"` for scheduled runs; unpacks costs from planner + builder; saves `build_size` + `cost_usd` to DB
+- `database.py`: `build_size TEXT` and `cost_usd REAL` columns added + migrations
+- `index.html`: Size dropdown in Build Now modal; `size` sent in prefs (replaces `manual: true`); size + cost badges on grid cards and list rows
+
+---
+
 ## v1.8.0 — Three-stage pipeline: Plan → Opus → Review (2026-05-24)
 
 ### New pipeline

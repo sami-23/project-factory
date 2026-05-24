@@ -3,17 +3,27 @@ from app.config import get_settings
 
 CLAUDE_MODEL = "claude-sonnet-4-6"
 
+_SONNET_INPUT_COST  = 3.0  / 1_000_000   # $ per token
+_SONNET_OUTPUT_COST = 15.0 / 1_000_000
 
-def plan_project(idea: dict, log, prefs: dict = None) -> str:
-    """Generate a detailed architecture spec before code generation."""
+
+def plan_project(idea: dict, log, prefs: dict = None) -> tuple[str, float]:
+    """Generate a detailed architecture spec before code generation.
+    Returns (plan_text, estimated_cost_usd)."""
     prefs = prefs or {}
-    manual = prefs.get("manual", False)
+    size  = prefs.get("size", "standard")
+
+    if size == "minimal":
+        feature_count, file_count, data_rows, max_features = "3", "2-4", "8-12", 3
+    elif size == "large":
+        feature_count, file_count, data_rows, max_features = "7-9", "7-10", "25-35", 8
+    else:  # standard
+        feature_count, file_count, data_rows, max_features = "5-6", "4-7", "15-20", 5
+
+    feature_list = "\n".join(f"{i}." for i in range(1, max_features + 1))
+
     settings = get_settings()
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=120.0)
-
-    feature_count = "6-8" if manual else "4-5"
-    file_count    = "6-10" if manual else "4-6"
-    data_rows     = "20-30" if manual else "10-15"
 
     is_web = idea.get("project_type") == "web"
     api_section = """
@@ -60,10 +70,7 @@ Include {data_rows} realistic hardcoded sample records (not "sample1", "sample2"
 
 ## Interactive Features (implement ALL {feature_count})
 Each feature must be specific and self-contained. Bad: "user can filter data". Good: "column header click sorts table ascending/descending with ▲/▼ indicator and current sort highlighted". List exactly {feature_count}:
-1.
-2.
-3.
-4.{"5.\\n6." if manual else "5."}
+{feature_list}
 
 ## Key Algorithms / Logic
 Describe any non-trivial logic: how state is managed, what computations happen client-side vs server-side, any interesting algorithms relevant to the domain (search, scoring, simulation, generation, etc.).
@@ -78,5 +85,7 @@ Tricky parts the coder should watch out for: event delegation, async patterns, e
         messages=[{"role": "user", "content": prompt}],
     )
     plan = resp.content[0].text.strip()
+    cost = (resp.usage.input_tokens * _SONNET_INPUT_COST +
+            resp.usage.output_tokens * _SONNET_OUTPUT_COST)
     log(f"📋 Architecture ready — {len(plan.splitlines())} lines, {len(plan)} chars")
-    return plan
+    return plan, cost

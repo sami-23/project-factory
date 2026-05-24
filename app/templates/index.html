@@ -177,6 +177,8 @@
   /* build options modal */
   .build-modal-box { max-width: 460px; }
   .build-modal-box .modal-body { padding: 18px; }
+  .badge-size { background: #1a2535; color: #7eb8f7; border: 1px solid #2a4a6a; }
+  .badge-cost { background: #152515; color: #7ecf7e; border: 1px solid #2a4e2a; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
   .field select {
@@ -338,6 +340,8 @@
       </div>
       <div class="card-meta">
         <span class="badge badge-{{ 'ok' if run.status == 'success' else ('run' if run.status == 'running' else 'fail') }}">{{ run.status }}</span>
+        {% if run.build_size %}<span class="badge badge-size">{{ run.build_size }}</span>{% endif %}
+        {% if run.cost_usd %}<span class="badge badge-cost" title="Estimated AI generation cost">~${{ '%.3f'|format(run.cost_usd) }}</span>{% endif %}
         <span class="card-date">{{ run.date }}</span>
         <button class="action-btn" onclick="showLog({{ run.id }})">Logs</button>
         {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
@@ -388,6 +392,8 @@
     </div>
     <div class="list-actions">
       <span class="badge badge-{{ 'ok' if run.status == 'success' else ('run' if run.status == 'running' else 'fail') }}">{{ run.status }}</span>
+      {% if run.build_size %}<span class="badge badge-size">{{ run.build_size }}</span>{% endif %}
+      {% if run.cost_usd %}<span class="badge badge-cost" title="Estimated AI generation cost">~${{ '%.3f'|format(run.cost_usd) }}</span>{% endif %}
       <button class="action-btn" onclick="showLog({{ run.id }})">Logs</button>
       {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
       {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
@@ -459,6 +465,17 @@
           <option value="data_viz">Data Viz (image)</option>
         </select>
       </div>
+      <div class="field">
+        <label>Project Size</label>
+        <select id="prefSize">
+          <option value="standard">Standard — 600–1200 lines, ~5 features</option>
+          <option value="minimal">Minimal — 200–400 lines, ~3 features (fast &amp; cheap)</option>
+          <option value="large">Large — 1500–2500 lines, ~8 features (slow)</option>
+        </select>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:4px">
+        <strong style="color:var(--text)">Note:</strong> Daily auto-builds always use Minimal.
+      </p>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeBuildModal()">Cancel</button>
@@ -618,7 +635,7 @@ function startBuild() {
     language:     document.getElementById('prefLang').value,
     category:     document.getElementById('prefCategory').value,
     project_type: document.getElementById('prefType').value,
-    manual:       true,
+    size:         document.getElementById('prefSize').value || 'standard',
   };
   Object.keys(prefs).forEach(k => { if (prefs[k] === '') delete prefs[k]; });
 

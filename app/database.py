@@ -26,11 +26,14 @@ def init_db():
             status      TEXT NOT NULL DEFAULT 'running',
             log         TEXT DEFAULT '',
             idea_json   TEXT,
+            build_size  TEXT,
+            cost_usd    REAL,
             created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     # Migrations for existing databases
-    for col in ("idea_json TEXT", "category TEXT", "tech_stack TEXT"):
+    for col in ("idea_json TEXT", "category TEXT", "tech_stack TEXT",
+                "build_size TEXT", "cost_usd REAL"):
         try:
             conn.execute(f"ALTER TABLE projects ADD COLUMN {col}")
         except Exception:
