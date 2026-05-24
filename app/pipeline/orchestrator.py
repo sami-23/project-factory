@@ -8,6 +8,7 @@ from pathlib import Path
 from app.config import get_settings
 from app import database as db
 from app.pipeline.ideator import generate_idea
+from app.pipeline.planner import plan_project
 from app.pipeline.builder import generate_code
 from app.pipeline.tester import run_project
 from app.pipeline.screenshotter import take_screenshot
@@ -85,8 +86,11 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
             idea_json=json.dumps(idea),
         )
 
-        # 2. Code generation (blocking: OpenAI + Anthropic HTTP calls)
-        files = await T(generate_code, idea, log, prefs or {}, timeout=480)
+        # 2. Architecture planning (blocking: Anthropic HTTP call)
+        plan = await T(plan_project, idea, log, prefs or {}, timeout=120)
+
+        # 3. Code generation — Claude Opus implements the plan (blocking: Anthropic HTTP call)
+        files = await T(generate_code, idea, log, prefs or {}, plan, timeout=600)
 
         # Persist files to data dir so they can be downloaded later
         project_dir = Path(settings.data_dir) / "projects" / str(run_id)

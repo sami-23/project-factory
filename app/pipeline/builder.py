@@ -1,10 +1,9 @@
 import re
 import anthropic
-from openai import OpenAI
 from app.config import get_settings
 
-GPT_MODEL = "gpt-4o"
-CLAUDE_MODEL = "claude-sonnet-4-6"
+OPUS_MODEL   = "claude-opus-4-7"
+REVIEW_MODEL = "claude-sonnet-4-6"
 
 _WEB_UI_RULES = """
 CRITICAL — Web UI design quality (this is non-negotiable):
@@ -20,7 +19,7 @@ CRITICAL — Web UI design quality (this is non-negotiable):
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     body { font-family: 'Inter', sans-serif; }
 - Structure every page with: a sticky header/navbar with the app name and nav links, a main content area, proper footer
-- Use card components with rounded corners (border-radius ≥ 8px), subtle shadows, and hover lift (transform: translateY(-2px))
+- Use card components with rounded corners (border-radius >= 8px), subtle shadows, and hover lift (transform: translateY(-2px))
 - All interactive elements must have visible hover states and smooth transitions (transition: all 0.2s ease)
 - Gradient accents are encouraged: use linear-gradient() on headers, hero sections, or key buttons
 - Include at least one icon set via CDN, e.g. Bootstrap Icons:
@@ -49,13 +48,11 @@ _LANG_HINTS = {
 }
 
 
-def generate_code(idea: dict, log, prefs: dict = None) -> list[tuple[str, str]]:
-    prefs = prefs or {}
+def generate_code(idea: dict, log, prefs: dict = None, plan: str = "") -> list[tuple[str, str]]:
+    prefs  = prefs or {}
     manual = prefs.get("manual", False)
-
     settings = get_settings()
-    oai = OpenAI(api_key=settings.openai_api_key, timeout=180.0)
-    claude = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=180.0)
+    claude = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=300.0)
 
     lang = idea["language"]
     web_line = f"Web port: {idea['web_port']}" if idea.get("web_port") else ""
@@ -63,7 +60,7 @@ def generate_code(idea: dict, log, prefs: dict = None) -> list[tuple[str, str]]:
     if manual:
         size_rules = (
             "- Split into 6-10 files with strict separation of concerns\n"
-            "- Total code 1000-2000 lines — full, production-quality implementation\n"
+            "- Total code 1500-2500 lines — full, production-quality implementation\n"
             "- For web: multiple pages/views with client-side fetch calls to a JSON API;\n"
             "  polished responsive CSS; real data models with CRUD or search operations\n"
             "- Include meaningful algorithms, data processing, or game/simulation logic\n"
@@ -71,17 +68,19 @@ def generate_code(idea: dict, log, prefs: dict = None) -> list[tuple[str, str]]:
         )
     else:
         size_rules = (
-            "- Split into 3-6 files with clear separation of concerns (server, routes, helpers, data, frontend)\n"
-            "- Total code should be 400-800 lines — make it real, not a toy\n"
+            "- Split into 4-6 files with clear separation of concerns (server, routes, helpers, data, frontend)\n"
+            "- Total code 600-1200 lines — make it real, not a toy\n"
             "- For web: build a proper multi-page or multi-section UI with navigation, not a single static page"
         )
 
-    max_tokens = 16000
-
+    plan_section = f"\n\n## Architecture Blueprint\nFollow this spec exactly:\n\n{plan}" if plan else ""
     web_ui_section = _WEB_UI_RULES if idea.get("project_type") == "web" else ""
+    max_tokens = 32000
 
-    gpt_prompt = f"""Generate a complete, working implementation of this project.
+    gen_prompt = f"""You are an expert software engineer. Generate a complete, fully-featured implementation of this project.
+{plan_section}
 
+Project details:
 Title: {idea['title']}
 Description: {idea['description']}
 Language: {lang}
@@ -93,40 +92,40 @@ Run command: {idea['run_command']}
 
 {_LANG_HINTS.get(lang, '')}
 {web_ui_section}
-Rules:
-- Write complete, runnable code — no TODO stubs or placeholders
+Implementation rules:
+- Write COMPLETE, RUNNABLE code — no TODO stubs, no placeholders, no "add your logic here"
 {size_rules}
 - Use Markdown code blocks with filename on the opening fence: ```python filename.py
 - Generate ALL necessary files (source + config + deps file)
+- Every interactive feature in the blueprint MUST be fully implemented — partial features are failures
 - For web: serve on the specified port, include hardcoded sample/demo data so it works immediately
-- CRITICAL for web: if the server serves any HTML/CSS/JS static files, those files MUST be generated too
+- CRITICAL for web: every HTML/CSS/JS file the server references MUST be in your output
   - NEVER reference public/index.html, templates/index.html, or any static file unless you include it
-  - Every file the server reads from disk must be in your output
-  - Keep all HTML inline in the server (e.g. res.send('<html>...')) to avoid missing file errors
-- CRITICAL for Python/Flask: if you call render_template('x.html'), you MUST also generate templates/x.html
-  - Prefer render_template_string(\"\"\"...\"\"\") to keep HTML inline and avoid TemplateNotFound errors
-  - NEVER call render_template() for a file you do not generate — this causes HTTP 500
+  - Every file the server reads from disk must be generated
+  - Keep all HTML inline in the server (res.send / render_template_string) to avoid missing file errors
+- CRITICAL for Python/Flask: if you call render_template('x.html'), you MUST generate templates/x.html
+  - Prefer render_template_string(\"\"\"...\"\"\") to keep HTML inline — avoids TemplateNotFound
+  - NEVER call render_template() for a file you do not generate
 - For cli: produce colourful, multi-section terminal output with real logic
 - For data_viz: save the final image to output.png
 - Only output code blocks, nothing else"""
 
-    log(f"⚡ GPT-4o generating code {'(large build)' if manual else ''}...")
-    gpt_resp = oai.chat.completions.create(
-        model=GPT_MODEL,
-        messages=[{"role": "user", "content": gpt_prompt}],
+    log(f"⚡ Claude Opus generating code {'(large build)' if manual else ''}...")
+    gen_resp = claude.messages.create(
+        model=OPUS_MODEL,
         max_tokens=max_tokens,
+        messages=[{"role": "user", "content": gen_prompt}],
     )
-    raw = gpt_resp.choices[0].message.content.strip()
-    # Log first fence header raw so filename format is visible in logs
+    raw = gen_resp.content[0].text.strip()
     first_fence = re.search(r"```[^\n]*", raw)
     if first_fence:
         log(f"  🔎 first fence: {first_fence.group(0)[:80]}")
     files = _parse_blocks(raw)
-    log(f"📦 GPT produced {len(files)} file(s): {', '.join(f[0] for f in files)}")
+    log(f"📦 Opus produced {len(files)} file(s): {', '.join(f[0] for f in files)}")
 
-    # Claude review pass
+    # Claude Sonnet review pass
     file_str = "\n\n".join(f"### {n}\n```\n{c}\n```" for n, c in files)
-    review_prompt = f"""Review this code for "{idea['title']}". Fix any bugs, missing imports, or issues that would prevent it from running.
+    review_prompt = f"""Review this code for "{idea['title']}". Fix bugs, missing imports, and anything that would prevent it from running.
 
 Run command: {idea['run_command']}
 Type: {idea['project_type']}
@@ -138,7 +137,7 @@ Critical checks for web projects:
   If yes, that file MUST be in the file list. If it is missing, either add it or rewrite the server to inline the HTML.
 - A missing file (ENOENT or TemplateNotFound) causes errors — treat it as a critical bug.
 
-UI quality check (web projects only — this matters):
+UI quality check (web projects only):
 - Does any HTML page have a plain white or light-gray body background (#fff, white, #f0f0f0, etc.)?
   If yes, REPLACE it with a dark theme using CSS variables (--bg: #0d1117 or similar dark color).
 - Is Bootstrap 5 CDN or Tailwind CDN included? If not, ADD the Bootstrap 5 dark CDN link and set <html data-bs-theme="dark">.
@@ -158,8 +157,7 @@ Critical checks for Flask/Python web projects:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'),
                           static_folder=os.path.join(BASE_DIR, 'static'))
-  Without this, Jinja2 raises TemplateNotFound when the server is started from a different working directory.
-- If routes are in a Blueprint, the Blueprint must NOT set its own template_folder (leave it as None so it inherits the app's folder).
+- If routes are in a Blueprint, the Blueprint must NOT set its own template_folder.
 
 Return ALL files in the same code-block format:
 ```lang filename
@@ -168,27 +166,27 @@ code
 
 If everything is correct, return the files unchanged. Only output code blocks."""
 
-    log("🔍 Claude reviewing and fixing code...")
+    log("🔍 Claude Sonnet reviewing and fixing...")
     review_resp = claude.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=max_tokens,
+        model=REVIEW_MODEL,
+        max_tokens=16000,
         messages=[{"role": "user", "content": review_prompt}],
     )
     reviewed = _parse_blocks(review_resp.content[0].text.strip())
     if reviewed:
         files = reviewed
-        log(f"✅ Claude finalised {len(files)} file(s)")
+        log(f"✅ Sonnet finalised {len(files)} file(s)")
     else:
-        log("⚠️  Claude review returned nothing — using GPT output as-is")
+        log("⚠️  Review returned nothing — using Opus output as-is")
 
-    # Sanity check: warn if any render_template('x') call has no matching template file
+    # Sanity check: warn on missing render_template targets
     file_names = {f[0] for f in files}
     for fname, code in files:
         for m in re.finditer(r"render_template\(['\"]([^'\"]+)['\"]", code):
             tpl = m.group(1)
             tpl_path = f"templates/{tpl}" if "/" not in tpl else tpl
             if tpl_path not in file_names and tpl not in file_names:
-                log(f"⚠️  render_template('{tpl}') in {fname} but '{tpl_path}' not in file list — may cause TemplateNotFound")
+                log(f"⚠️  render_template('{tpl}') in {fname} but '{tpl_path}' not in file list")
 
     return files
 
@@ -211,6 +209,5 @@ def _clean_filename(name: str) -> str:
     name = re.sub(r"^//\s*", "", name)                   # // file.js
     name = re.sub(r"^#\s*", "", name)                    # # file.py
     name = re.sub(r"^filename=", "", name, flags=re.IGNORECASE)  # filename=server.js
-    # Strip anything that isn't a valid path character
     name = re.sub(r"[^\w./_-]", "", name)
     return name.strip()

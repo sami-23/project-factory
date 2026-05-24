@@ -1,4 +1,36 @@
-# Project Factory — Development Log
+## v1.8.0 — Three-stage pipeline: Plan → Opus → Review (2026-05-24)
+
+### New pipeline
+The code-generation stage is now three distinct steps:
+
+**Step 1 — Architecture planning** (`planner.py`, Claude Sonnet):
+Produces a detailed technical spec before any code is written:
+- Exact file list with roles
+- Full REST API endpoint definitions
+- Data models with 10–30 realistic hardcoded sample records
+- UI sections with interaction descriptions
+- 4–8 named, concrete interactive features (vague features rejected)
+- Key algorithms and implementation notes
+
+**Step 2 — Code generation** (`builder.py`, Claude Opus 4.7):
+Implements the full spec with a 32k-token budget — replaced GPT-4o entirely.
+Opus follows complex multi-file instructions far more reliably and produces genuinely feature-rich output.
+
+**Step 3 — Review** (`builder.py`, Claude Sonnet 4.6):
+Bug-fix pass: missing imports, TemplateNotFound, white backgrounds, missing UI polish.
+
+### Changes
+- `planner.py` added — new pipeline stage between ideation and code generation
+- `builder.py` rewritten: GPT-4o removed, Claude Opus 4.7 is the code generator; Sonnet remains reviewer
+- `orchestrator.py`: plan step inserted between ideation and generation; generation timeout raised to 600s
+- `requirements.txt`: `openai` and `httpx` pin removed (no longer needed)
+- `config.py`: `openai_api_key` field removed
+- Code size targets raised: 600–1200 lines (auto), 1500–2500 lines (manual)
+
+### Why Opus over GPT-4o
+GPT-4o would produce single-feature demos regardless of prompt length. Claude Opus 4.7 has superior instruction-following for complex multi-file specs and consistently implements every named feature in the blueprint.
+
+---
 
 ## v1.7.0 — Modern UI enforcement for generated projects (2026-05-23)
 
