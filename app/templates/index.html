@@ -151,6 +151,11 @@
   .action-btn.download:hover      { border-color: var(--green); color: var(--green); }
   .action-btn.github:hover        { border-color: var(--purple); color: var(--purple); }
 
+  /* ── countdown ── */
+  #countdownValue { transition: color .3s; }
+  #countdownValue.soon { color: var(--yellow) !important; }
+  #countdownValue.imminent { color: var(--red) !important; animation: pulse 1s ease-in-out infinite; }
+
   /* ── empty/no-results ── */
   .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
   .empty h3 { font-size: 16px; margin-bottom: 8px; color: var(--text); }
@@ -225,6 +230,13 @@
     <div class="stat">
       <div class="stat-label">Success Rate</div>
       <div class="stat-value">{{ ((success / total * 100) | round | int) if total else 0 }}%</div>
+    </div>
+    <div class="stat" id="countdownStat" style="min-width:160px">
+      <div class="stat-label" id="countdownLabel">Next Build</div>
+      <div class="stat-value" id="countdownValue" style="font-size:18px;letter-spacing:1px;font-variant-numeric:tabular-nums">
+        {% if is_running %}⏳ Building…{% else %}--:--:--{% endif %}
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px" id="countdownSub"></div>
     </div>
   </div>
 
@@ -469,6 +481,69 @@
 <script>
 let evtSource = null;
 let currentView = 'grid';
+
+// ── countdown timer ───────────────────────────────────────────────────────────
+let _countdownTarget = null;
+let _countdownInterval = null;
+
+function initCountdown(isoString) {
+  if (_countdownInterval) clearInterval(_countdownInterval);
+  if (!isoString) return;
+  _countdownTarget = new Date(isoString);
+  _tickCountdown();
+  _countdownInterval = setInterval(_tickCountdown, 1000);
+}
+
+function _tickCountdown() {
+  const el    = document.getElementById('countdownValue');
+  const sub   = document.getElementById('countdownSub');
+  const label = document.getElementById('countdownLabel');
+  if (!el || !_countdownTarget) return;
+
+  // If a build is running, show that instead
+  if (document.getElementById('buildBtn').disabled) {
+    el.textContent = '⏳ Building…';
+    el.className = 'stat-value';
+    if (label) label.textContent = 'Status';
+    if (sub) sub.textContent = '';
+    return;
+  }
+
+  const diff = Math.floor((_countdownTarget - Date.now()) / 1000);
+  if (label) label.textContent = 'Next Build';
+
+  if (diff <= 0) {
+    el.textContent = '🚀 Starting…';
+    el.className = 'stat-value imminent';
+    if (sub) sub.textContent = '';
+    // Re-fetch the next scheduled time in case it rolled over
+    fetch('/api/next-build').then(r => r.json()).then(d => {
+      if (d.next_build_iso) initCountdown(d.next_build_iso);
+    });
+    return;
+  }
+
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+  // Colour shift as the build approaches
+  el.classList.remove('soon', 'imminent');
+  if (diff < 300) el.classList.add('imminent');       // < 5 min → red pulse
+  else if (diff < 3600) el.classList.add('soon');     // < 1 hr  → yellow
+
+  // Sub-label: human-readable scheduled time in local timezone
+  if (sub) {
+    sub.textContent = _countdownTarget.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+  }
+}
+
+// Seed from server-rendered value so no flash on load
+const _serverNextBuild = "{{ next_build_iso }}";
+if (_serverNextBuild && !{{ 'true' if is_running else 'false' }}) {
+  initCountdown(_serverNextBuild);
+}
 
 // ── view toggle ───────────────────────────────────────────────────────────────
 function setView(v) {

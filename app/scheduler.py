@@ -26,5 +26,15 @@ def stop_scheduler():
         _scheduler.shutdown(wait=False)
 
 
+def get_next_run_time() -> str | None:
+    """Return the next scheduled build time as an ISO-8601 string (UTC), or None."""
+    if not _scheduler:
+        return None
+    job = _scheduler.get_job("daily_build")
+    if job and job.next_run_time:
+        return job.next_run_time.isoformat()
+    return None
+
+
 async def _trigger():
     await run_pipeline()
