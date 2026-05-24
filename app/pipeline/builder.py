@@ -32,6 +32,60 @@ CRITICAL — Web UI design quality (this is non-negotiable):
 - The result must look like a real SaaS product or portfolio piece — NOT a university assignment
 """
 
+_KNOWN_PACKAGES = {
+    "flask":             "flask",
+    "fastapi":           "fastapi",
+    "uvicorn":           "uvicorn[standard]",
+    "requests":          "requests",
+    "httpx":             "httpx",
+    "aiohttp":           "aiohttp",
+    "pandas":            "pandas",
+    "numpy":             "numpy",
+    "matplotlib":        "matplotlib",
+    "PIL":               "pillow",
+    "pydantic":          "pydantic",
+    "jinja2":            "jinja2",
+    "sqlalchemy":        "sqlalchemy",
+    "rich":              "rich",
+    "click":             "click",
+    "typer":             "typer",
+    "dotenv":            "python-dotenv",
+    "yaml":              "pyyaml",
+    "toml":              "toml",
+    "bs4":               "beautifulsoup4",
+    "sklearn":           "scikit-learn",
+    "cv2":               "opencv-python",
+    "pygame":            "pygame",
+    "flask_cors":        "flask-cors",
+    "flask_sqlalchemy":  "flask-sqlalchemy",
+    "flask_login":       "flask-login",
+    "flask_wtf":         "flask-wtf",
+    "werkzeug":          "werkzeug",
+    "cryptography":      "cryptography",
+    "jwt":               "pyjwt",
+    "passlib":           "passlib",
+    "bcrypt":            "bcrypt",
+    "celery":            "celery",
+    "redis":             "redis",
+    "pymongo":           "pymongo",
+    "motor":             "motor",
+}
+
+
+def _auto_requirements(files: list[tuple[str, str]]) -> str:
+    """Scan .py files for third-party imports and return a requirements.txt body."""
+    import re as _re
+    found = set()
+    for fname, code in files:
+        if not fname.endswith(".py"):
+            continue
+        for m in _re.finditer(r"^(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)", code, _re.MULTILINE):
+            top = m.group(1)
+            if top in _KNOWN_PACKAGES:
+                found.add(_KNOWN_PACKAGES[top])
+    return "\n".join(sorted(found)) + "\n" if found else ""
+
+
 _LANG_HINTS = {
     "python": (
         "Use only stdlib + well-known pip packages that ship pre-built wheels "
@@ -177,6 +231,11 @@ UI quality check (web projects only):
 - Are there hover states + transitions on buttons and cards? If not, add them.
 - The app should look like a polished SaaS product. If it looks like a bare HTML form, upgrade the styling.
 
+Critical checks for Python projects:
+- Is there a requirements.txt in the file list? If NOT, you MUST add one listing every third-party
+  package imported across all .py files (flask, fastapi, requests, etc.). Missing requirements.txt
+  causes ModuleNotFoundError at startup — treat it as a critical bug.
+
 Critical checks for Flask/Python web projects:
 - Scan every route for render_template('x.html') calls. For EACH call, check the file list for templates/x.html.
   If that template is missing from the file list, you MUST either:
@@ -212,6 +271,17 @@ If everything is correct, return the files unchanged. Only output code blocks.""
         log(f"✅ Sonnet finalised {len(files)} file(s)")
     else:
         log("⚠️  Review returned nothing — using Opus output as-is")
+
+    # Ensure requirements.txt exists for Python projects
+    if idea.get("language") == "python":
+        has_req = any(f[0].endswith("requirements.txt") for f in files)
+        if not has_req:
+            req_body = _auto_requirements(files)
+            if req_body:
+                files = list(files) + [("requirements.txt", req_body)]
+                log(f"📋 Auto-generated requirements.txt: {req_body.strip()}")
+            else:
+                log("⚠️  Could not auto-generate requirements.txt — no known packages found")
 
     # Sanity check: warn on missing render_template targets
     file_names = {f[0] for f in files}
