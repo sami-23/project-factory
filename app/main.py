@@ -12,7 +12,7 @@ from fastapi.requests import Request
 
 from app.config import get_settings
 from app import database as db
-from app.pipeline.orchestrator import run_pipeline, is_running, VERSION
+from app.pipeline.orchestrator import run_pipeline, retest_pipeline, is_running, VERSION
 from app.scheduler import start_scheduler, stop_scheduler, get_next_run_time
 
 settings = get_settings()
@@ -142,6 +142,23 @@ async def retry_run(run_id: int, background_tasks: BackgroundTasks):
         raise HTTPException(400, "No idea data stored for this run — trigger a fresh build instead")
     retry_idea = json.loads(run["idea_json"])
     background_tasks.add_task(run_pipeline, None, retry_idea)
+    return {"status": "started"}
+
+
+@app.post("/runs/{run_id}/retest")
+async def retest_run(run_id: int, background_tasks: BackgroundTasks):
+    """Re-run only the test/screenshot/publish steps using existing saved files."""
+    if is_running():
+        return {"status": "already_running"}
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(404)
+    if run["status"] == "running":
+        raise HTTPException(400, "Run is already in progress")
+    project_dir = Path(settings.data_dir) / "projects" / str(run_id)
+    if not project_dir.exists():
+        raise HTTPException(400, "No saved files for this run — use Full Rebuild instead")
+    background_tasks.add_task(retest_pipeline, run_id)
     return {"status": "started"}
 
 

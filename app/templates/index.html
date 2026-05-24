@@ -146,6 +146,7 @@
     transition: border-color .12s, color .12s;
   }
   .action-btn:hover               { border-color: var(--accent); color: var(--accent); }
+  .action-btn.retest:hover        { border-color: #3fb950; color: #3fb950; }
   .action-btn.retry:hover         { border-color: var(--yellow); color: var(--yellow); }
   .action-btn.delete:hover        { border-color: var(--red); color: var(--red); }
   .action-btn.download:hover      { border-color: var(--green); color: var(--green); }
@@ -347,7 +348,10 @@
         {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
         {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
         {% if run.status == 'failed' %}
-          <button class="action-btn retry" onclick="retryRun({{ run.id }})">↺ Retry</button>
+          {% if run.has_download %}
+            <button class="action-btn retest" onclick="retestRun({{ run.id }})" title="Re-run test using saved files — no AI cost">▶ Retest</button>
+          {% endif %}
+          <button class="action-btn retry" onclick="retryRun({{ run.id }})" title="Full rebuild — re-generates code (costs tokens)">↺ Rebuild</button>
           <button class="action-btn delete" onclick="deleteRun({{ run.id }})">✕</button>
         {% endif %}
       </div>
@@ -398,7 +402,10 @@
       {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
       {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
       {% if run.status == 'failed' %}
-        <button class="action-btn retry" onclick="retryRun({{ run.id }})">↺ Retry</button>
+        {% if run.has_download %}
+          <button class="action-btn retest" onclick="retestRun({{ run.id }})" title="Re-run test using saved files — no AI cost">▶ Retest</button>
+        {% endif %}
+        <button class="action-btn retry" onclick="retryRun({{ run.id }})" title="Full rebuild — re-generates code (costs tokens)">↺ Rebuild</button>
         <button class="action-btn delete" onclick="deleteRun({{ run.id }})">✕</button>
       {% endif %}
     </div>
@@ -676,8 +683,23 @@ function startLogStream() {
 {% if is_running %}startLogStream();{% endif %}
 
 // ── run actions ───────────────────────────────────────────────────────────────
+async function retestRun(runId) {
+  if (!confirm('Re-run the test using the already-generated files?\n\nThis is free — no AI code generation.')) return;
+  const btn = document.getElementById('buildBtn');
+  btn.disabled = true; btn.textContent = '⏳ Building…';
+  const r = await fetch(`/runs/${runId}/retest`, { method: 'POST' });
+  const data = await r.json();
+  if (data.status === 'started') {
+    document.getElementById('live-section').style.display = 'block';
+    startLogStream();
+  } else {
+    alert(data.detail || data.message || 'Could not start retest');
+    btn.disabled = false; btn.textContent = '▶ Build Now';
+  }
+}
+
 async function retryRun(runId) {
-  if (!confirm('Retry building this project with the same idea?')) return;
+  if (!confirm('Full rebuild — regenerates idea, plan, and code from scratch?\n\nThis will use AI tokens (costs money).')) return;
   const btn = document.getElementById('buildBtn');
   btn.disabled = true; btn.textContent = '⏳ Building…';
   const r = await fetch(`/runs/${runId}/retry`, { method: 'POST' });
@@ -686,7 +708,7 @@ async function retryRun(runId) {
     document.getElementById('live-section').style.display = 'block';
     startLogStream();
   } else {
-    alert(data.detail || data.message || 'Could not start retry');
+    alert(data.detail || data.message || 'Could not start rebuild');
     btn.disabled = false; btn.textContent = '▶ Build Now';
   }
 }

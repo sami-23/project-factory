@@ -50,6 +50,125 @@ _PLAN_TIMEOUTS = {"minimal": 90,  "standard": 120, "large": 180}
 _GEN_TIMEOUTS  = {"minimal": 300, "standard": 600, "large": 1200}
 
 
+def _load_project_files(project_dir: Path) -> list[tuple[str, str]]:
+    """Read all source files from a persisted project directory."""
+    skip_names = {"README.md", "screenshot.png"}
+    files = []
+    for fp in sorted(project_dir.rglob("*")):
+        if fp.is_file() and fp.name not in skip_names and fp.suffix != ".png":
+            rel = str(fp.relative_to(project_dir)).replace("\\", "/")
+            try:
+                files.append((rel, fp.read_text(encoding="utf-8")))
+            except Exception:
+                pass
+    return files
+
+
+def _find_entry_point(idea: dict, files: list[tuple[str, str]], log) -> dict:
+    """Adjust idea['entry_point'] if the declared file is missing."""
+    generated = [f[0] for f in files]
+    if not any(Path(f) == Path(idea["entry_point"]) for f in generated):
+        ep_name = Path(idea["entry_point"]).name
+        match = next((f for f in generated if Path(f).name == ep_name), None)
+        if match is None:
+            for candidate in ("server.js", "app.js", "index.js", "main.js",
+                              "server.py", "app.py", "main.py"):
+                match = next((f for f in generated if Path(f).name == candidate), None)
+                if match:
+                    break
+        if match is None and generated:
+            match = generated[0]
+        if match:
+            log(f"⚠️  entry_point '{idea['entry_point']}' missing — adjusted → '{match}'")
+            return {**idea, "entry_point": match}
+    return idea
+
+
+async def retest_pipeline(run_id: int):
+    """Re-run test → screenshot → GitHub using existing saved files. No AI calls."""
+    global _running
+    if _running:
+        return
+    _running = True
+
+    settings = get_settings()
+    db.update_run(run_id, status="running", log="")
+
+    def log(msg: str):
+        print(msg, flush=True)
+        db.append_log(run_id, msg)
+
+    async def T(fn, *args, timeout=300):
+        return await asyncio.wait_for(asyncio.to_thread(fn, *args), timeout=timeout)
+
+    try:
+        run = db.get_run(run_id)
+        if not run or not run.get("idea_json"):
+            log("❌ No idea data stored for this run — use Full Rebuild instead")
+            db.update_run(run_id, status="failed")
+            return
+
+        idea = json.loads(run["idea_json"])
+        log(f"🔄 Retesting: \"{idea['title']}\" (using saved files, no AI)")
+
+        project_dir = Path(settings.data_dir) / "projects" / str(run_id)
+        if not project_dir.exists():
+            log("❌ No saved files found — use Full Rebuild instead")
+            db.update_run(run_id, status="failed")
+            return
+
+        files = _load_project_files(project_dir)
+        log(f"📂 Loaded {len(files)} file(s): {', '.join(f[0] for f in files)}")
+
+        screenshot_dir = Path(settings.data_dir) / "screenshots"
+        screenshot_dir.mkdir(parents=True, exist_ok=True)
+        screenshot_path = screenshot_dir / f"{run_id}.png"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            for filename, code in files:
+                fp = tmp / filename
+                fp.parent.mkdir(parents=True, exist_ok=True)
+                fp.write_text(code, encoding="utf-8")
+
+            idea = _find_entry_point(idea, files, log)
+            success, stdout, stderr = await T(run_project, idea, tmp, log)
+
+            if not success:
+                log("❌ Project failed to run — aborting")
+                db.update_run(run_id, status="failed")
+                return
+
+            await take_screenshot(idea, tmp, stdout, screenshot_path, log)
+
+        db.update_run(
+            run_id,
+            screenshot_path=str(screenshot_path) if screenshot_path.exists() else None,
+        )
+
+        # Only publish to GitHub if not already done
+        if not run.get("github_url"):
+            repo, github_url = await T(create_repo, idea, log)
+            db.update_run(run_id, github_url=github_url)
+            readme = await T(write_readme, idea, files, stdout, github_url, log)
+            if readme:
+                (project_dir / "README.md").write_text(readme, encoding="utf-8")
+            await T(push_all, repo, idea, files, readme,
+                    screenshot_path if screenshot_path.exists() else None, log)
+            db.update_run(run_id, status="success")
+            log(f"🎉 Done! {github_url}")
+        else:
+            db.update_run(run_id, status="success")
+            log(f"🎉 Done! (already on GitHub: {run['github_url']})")
+
+    except Exception as e:
+        log(f"💥 Retest failed: {type(e).__name__}: {e}")
+        db.update_run(run_id, status="failed")
+        raise
+    finally:
+        _running = False
+
+
 async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None):
     global _running
     if _running:
@@ -128,23 +247,7 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
                 fp.parent.mkdir(parents=True, exist_ok=True)
                 fp.write_text(code, encoding="utf-8")
 
-            # If the declared entry_point wasn't generated, find the real one
-            if not (tmp / idea["entry_point"]).exists():
-                generated = [f[0] for f in files]
-                log(f"⚠️  entry_point '{idea['entry_point']}' missing — generated: {generated}")
-                ep_name = Path(idea["entry_point"]).name
-                match = next((f for f in generated if Path(f).name == ep_name), None)
-                if match is None:
-                    for candidate in ("server.js", "app.js", "index.js", "main.js",
-                                      "server.py", "app.py", "main.py"):
-                        match = next((f for f in generated if Path(f).name == candidate), None)
-                        if match:
-                            break
-                if match is None and generated:
-                    match = generated[0]
-                if match:
-                    idea = {**idea, "entry_point": match}
-                    log(f"📌 Adjusted entry_point → '{match}'")
+            idea = _find_entry_point(idea, files, log)
 
             # blocking: subprocess + time.sleep polling
             success, stdout, stderr = await T(run_project, idea, tmp, log)
