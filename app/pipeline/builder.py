@@ -114,9 +114,9 @@ _SIZE_CONFIG = {
             "- Total code 200-400 lines — functional but compact\n"
             "- For web: a single-page or two-page UI is fine"
         ),
-        "gen_tokens":    8_000,
-        "review_tokens": 4_000,
-        "api_timeout":  120.0,
+        "gen_tokens":   12_000,
+        "review_tokens": 6_000,
+        "api_timeout":  180.0,
     },
     "standard": {
         "size_rules": (
@@ -198,6 +198,8 @@ Implementation rules:
         max_tokens=cfg["gen_tokens"],
         messages=[{"role": "user", "content": gen_prompt}],
     )
+    if gen_resp.stop_reason == "max_tokens":
+        log(f"⚠️  Opus hit max_tokens ({cfg['gen_tokens']}) — response truncated")
     gen_cost = (gen_resp.usage.input_tokens  * _OPUS_INPUT_COST +
                 gen_resp.usage.output_tokens * _OPUS_OUTPUT_COST)
 
@@ -267,7 +269,14 @@ If everything is correct, return the files unchanged. Only output code blocks.""
 
     reviewed = _parse_blocks(review_resp.content[0].text.strip())
     if reviewed:
-        files = reviewed
+        # Merge: keep any Opus files that Sonnet dropped (to avoid missing-module errors)
+        reviewed_names = {f[0] for f in reviewed}
+        dropped = [f for f in files if f[0] not in reviewed_names]
+        if dropped:
+            log(f"⚠️  Sonnet dropped {len(dropped)} file(s), restoring: {', '.join(f[0] for f in dropped)}")
+            files = reviewed + dropped
+        else:
+            files = reviewed
         log(f"✅ Sonnet finalised {len(files)} file(s)")
     else:
         log("⚠️  Review returned nothing — using Opus output as-is")
@@ -299,6 +308,11 @@ If everything is correct, return the files unchanged. Only output code blocks.""
 
 
 def _parse_blocks(markdown: str) -> list[tuple[str, str]]:
+    # If the response was truncated (odd number of ``` markers), close the last block
+    fence_count = len(re.findall(r"```", markdown))
+    if fence_count % 2 != 0:
+        markdown = markdown.rstrip() + "\n```"
+
     pattern = r"```(?:[\w+-]+)?\s+(?:filename=)?([^\n`]+)\n(.*?)```"
     matches = re.findall(pattern, markdown, re.DOTALL)
     if not matches:
