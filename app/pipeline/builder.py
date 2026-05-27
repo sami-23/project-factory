@@ -5,6 +5,11 @@ from app.config import get_settings
 OPUS_MODEL   = "claude-opus-4-7"
 REVIEW_MODEL = "claude-sonnet-4-6"
 
+# Model output ceilings — max_tokens is a hard stop, not a budget.
+# Actual output size is controlled by the size_rules in the prompt.
+_OPUS_MAX_TOKENS   = 32_000
+_SONNET_MAX_TOKENS = 16_000
+
 _OPUS_INPUT_COST    = 15.0 / 1_000_000
 _OPUS_OUTPUT_COST   = 75.0 / 1_000_000
 _SONNET_INPUT_COST  =  3.0 / 1_000_000
@@ -102,11 +107,14 @@ _LANG_HINTS = {
     ),
     "javascript": (
         "Use only well-known npm packages. "
-        "Always include package.json with all deps and a 'start' script."
+        "Always include package.json with all deps and a 'start' script. "
+        "CRITICAL for web servers: ALWAYS read the port from the environment: "
+        "`const PORT = parseInt(process.env.PORT) || <fallback>;` "
+        "then `app.listen(PORT, ...)`. Never hardcode a port number anywhere else."
     ),
 }
 
-# Per-size limits
+# Size only controls scope/complexity via the prompt — token limits are always the model max.
 _SIZE_CONFIG = {
     "minimal": {
         "size_rules": (
@@ -114,8 +122,6 @@ _SIZE_CONFIG = {
             "- Total code 200-400 lines — functional but compact\n"
             "- For web: a single-page or two-page UI is fine"
         ),
-        "gen_tokens":   12_000,
-        "review_tokens": 6_000,
         "api_timeout":  180.0,
     },
     "standard": {
@@ -124,8 +130,6 @@ _SIZE_CONFIG = {
             "- Total code 600-1200 lines — make it real, not a toy\n"
             "- For web: build a proper multi-page or multi-section UI with navigation, not a single static page"
         ),
-        "gen_tokens":   16_000,
-        "review_tokens": 8_000,
         "api_timeout":  300.0,
     },
     "large": {
@@ -137,8 +141,6 @@ _SIZE_CONFIG = {
             "- Include meaningful algorithms, data processing, or game/simulation logic\n"
             "- Every file should be substantial — no thin wrappers"
         ),
-        "gen_tokens":   32_000,
-        "review_tokens": 16_000,
         "api_timeout":  480.0,
     },
 }
@@ -195,15 +197,32 @@ Implementation rules:
     log(f"⚡ Claude Opus generating code ({size} build)...")
     gen_resp = claude.messages.create(
         model=OPUS_MODEL,
-        max_tokens=cfg["gen_tokens"],
+        max_tokens=_OPUS_MAX_TOKENS,
         messages=[{"role": "user", "content": gen_prompt}],
     )
-    if gen_resp.stop_reason == "max_tokens":
-        log(f"⚠️  Opus hit max_tokens ({cfg['gen_tokens']}) — response truncated")
     gen_cost = (gen_resp.usage.input_tokens  * _OPUS_INPUT_COST +
                 gen_resp.usage.output_tokens * _OPUS_OUTPUT_COST)
-
     raw = gen_resp.content[0].text.strip()
+
+    _MAX_CONTINUATIONS = 5
+    for attempt in range(1, _MAX_CONTINUATIONS + 1):
+        if gen_resp.stop_reason != "max_tokens":
+            break
+        log(f"⚠️  Opus hit max_tokens — continuation {attempt}/{_MAX_CONTINUATIONS}...")
+        gen_resp = claude.messages.create(
+            model=OPUS_MODEL,
+            max_tokens=_OPUS_MAX_TOKENS,
+            messages=[
+                {"role": "user", "content": gen_prompt},
+                {"role": "assistant", "content": raw},
+                {"role": "user", "content": "Continue exactly where you left off. Output only the remaining code, starting mid-block if the last block was cut off. Do not repeat anything already written."},
+            ],
+        )
+        gen_cost += (gen_resp.usage.input_tokens  * _OPUS_INPUT_COST +
+                     gen_resp.usage.output_tokens * _OPUS_OUTPUT_COST)
+        raw = raw + "\n" + gen_resp.content[0].text.strip()
+    else:
+        log(f"⚠️  Reached max continuations ({_MAX_CONTINUATIONS}) — output may still be truncated")
     first_fence = re.search(r"```[^\n]*", raw)
     if first_fence:
         log(f"  🔎 first fence: {first_fence.group(0)[:80]}")
@@ -261,7 +280,7 @@ If everything is correct, return the files unchanged. Only output code blocks.""
     log("🔍 Claude Sonnet reviewing and fixing...")
     review_resp = claude.messages.create(
         model=REVIEW_MODEL,
-        max_tokens=cfg["review_tokens"],
+        max_tokens=_SONNET_MAX_TOKENS,
         messages=[{"role": "user", "content": review_prompt}],
     )
     review_cost = (review_resp.usage.input_tokens  * _SONNET_INPUT_COST +

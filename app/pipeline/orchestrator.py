@@ -219,6 +219,7 @@ async def run_pipeline(prefs: dict | None = None, retry_idea: dict | None = None
         # 2. Architecture planning (blocking: Anthropic HTTP call)
         plan, plan_cost = await T(plan_project, idea, log, prefs,
                                   timeout=_PLAN_TIMEOUTS[size])
+        db.update_run(run_id, plan_text=plan)
 
         # 3. Code generation — Claude Opus implements the plan (blocking: Anthropic HTTP call)
         files, gen_cost = await T(generate_code, idea, log, prefs, plan,

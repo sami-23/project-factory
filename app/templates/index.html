@@ -175,6 +175,18 @@
   .modal-close:hover { color: var(--text); }
   .modal-log { padding: 16px 18px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.7; color: #c9d1d9; overflow-y: auto; white-space: pre-wrap; flex: 1; }
 
+  /* ── plan modal ── */
+  .plan-modal-box { max-width: 720px; }
+  .plan-body { padding: 20px 24px; overflow-y: auto; flex: 1; line-height: 1.65; font-size: 13px; color: var(--text); }
+  .plan-body h3 { font-size: 13px; font-weight: 700; color: var(--accent); margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .6px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+  .plan-body h3:first-child { margin-top: 0; }
+  .plan-body h4 { font-size: 12px; font-weight: 600; color: var(--yellow); margin: 12px 0 4px; }
+  .plan-body ul { padding-left: 20px; margin: 4px 0 8px; }
+  .plan-body li { margin-bottom: 3px; color: var(--muted); }
+  .plan-body li strong { color: var(--text); }
+  .plan-body p { color: var(--muted); margin-bottom: 6px; }
+  .plan-body code { background: #010409; border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-family: 'Courier New', monospace; font-size: 11px; color: #79c0ff; }
+
   /* build options modal */
   .build-modal-box { max-width: 460px; }
   .build-modal-box .modal-body { padding: 18px; }
@@ -345,6 +357,7 @@
         {% if run.cost_usd %}<span class="badge badge-cost" title="Estimated AI generation cost">~${{ '%.3f'|format(run.cost_usd) }}</span>{% endif %}
         <span class="card-date">{{ run.date }}</span>
         <button class="action-btn" onclick="showLog({{ run.id }})">Logs</button>
+        {% if run.has_plan %}<button class="action-btn" onclick="showPlan({{ run.id }}, '{{ run.title | e }}')" title="View architecture blueprint">Blueprint</button>{% endif %}
         {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
         {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
         {% if run.status == 'failed' %}
@@ -399,6 +412,7 @@
       {% if run.build_size %}<span class="badge badge-size">{{ run.build_size }}</span>{% endif %}
       {% if run.cost_usd %}<span class="badge badge-cost" title="Estimated AI generation cost">~${{ '%.3f'|format(run.cost_usd) }}</span>{% endif %}
       <button class="action-btn" onclick="showLog({{ run.id }})">Logs</button>
+      {% if run.has_plan %}<button class="action-btn" onclick="showPlan({{ run.id }}, '{{ run.title | e }}')" title="View architecture blueprint">Blueprint</button>{% endif %}
       {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
       {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
       {% if run.status == 'failed' %}
@@ -499,6 +513,17 @@
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="modal-log" id="modalLog">Loading…</div>
+  </div>
+</div>
+
+<!-- Plan modal -->
+<div class="modal-overlay" id="planOverlay" onclick="if(event.target===this)closePlanModal()">
+  <div class="modal plan-modal-box">
+    <div class="modal-header">
+      <span id="planModalTitle">Architecture Blueprint</span>
+      <button class="modal-close" onclick="closePlanModal()">×</button>
+    </div>
+    <div class="plan-body" id="planBody">Loading…</div>
   </div>
 </div>
 
@@ -730,9 +755,53 @@ async function showLog(runId) {
 
 function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
 
+// ── plan modal ────────────────────────────────────────────────────────────────
+function _mdToHtml(text) {
+  const lines = text.split('\n');
+  let html = '';
+  let inUl = false;
+  for (const raw of lines) {
+    let line = raw
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    if (/^## /.test(raw)) {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      html += `<h3>${line.replace(/^## /, '')}</h3>`;
+    } else if (/^### /.test(raw)) {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      html += `<h4>${line.replace(/^### /, '')}</h4>`;
+    } else if (/^[-*] /.test(raw)) {
+      if (!inUl) { html += '<ul>'; inUl = true; }
+      html += `<li>${line.replace(/^[-*] /, '')}</li>`;
+    } else if (/^\d+\. /.test(raw)) {
+      if (!inUl) { html += '<ul>'; inUl = true; }
+      html += `<li>${line.replace(/^\d+\. /, '')}</li>`;
+    } else {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      if (line.trim()) html += `<p>${line}</p>`;
+    }
+  }
+  if (inUl) html += '</ul>';
+  return html;
+}
+
+async function showPlan(runId, title) {
+  document.getElementById('planModalTitle').textContent = `Blueprint — ${title}`;
+  document.getElementById('planBody').innerHTML = 'Loading…';
+  document.getElementById('planOverlay').classList.add('open');
+  const r = await fetch(`/runs/${runId}/plan`);
+  const data = await r.json();
+  document.getElementById('planBody').innerHTML = data.plan
+    ? _mdToHtml(data.plan)
+    : '<p style="color:var(--muted)">No blueprint recorded for this run.</p>';
+}
+
+function closePlanModal() { document.getElementById('planOverlay').classList.remove('open'); }
+
 // Close modals on Escape
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeModal(); closeBuildModal(); }
+  if (e.key === 'Escape') { closeModal(); closeBuildModal(); closePlanModal(); }
 });
 </script>
 </body>

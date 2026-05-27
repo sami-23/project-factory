@@ -51,6 +51,7 @@ def dashboard(request: Request):
     runs = db.get_all_runs()
     for run in runs:
         run["has_download"] = (data_dir / "projects" / str(run["id"])).exists()
+        run["has_plan"] = bool(run.get("plan_text"))
         ts = run.get("tech_stack")
         run["tech_stack_list"] = json.loads(ts) if ts else []
     current = db.get_current_run()
@@ -216,6 +217,14 @@ def get_log(run_id: int):
     if not run:
         raise HTTPException(404)
     return {"log": run.get("log", "")}
+
+
+@app.get("/runs/{run_id}/plan")
+def get_plan(run_id: int):
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(404)
+    return {"plan": run.get("plan_text") or ""}
 
 
 # ── history / scheduler API ───────────────────────────────────────────────────

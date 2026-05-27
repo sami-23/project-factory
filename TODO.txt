@@ -1,0 +1,61 @@
+Project Factory — TODO
+======================
+Last updated: 2026-05-25 (v2.0.0)
+
+
+KNOWN ISSUES
+------------
+- Sonnet review sometimes drops files it doesn't modify (currently restored via
+  the "merge" fallback, but the root cause is Sonnet not repeating unchanged
+  files). Consider instructing Sonnet to always output every file, even unchanged.
+
+- EADDRINUSE can still occur if the previous server process didn't die cleanly
+  on a port OTHER than web_port (e.g. Opus hardcoded a different port). The
+  kill-port logic only frees web_port; generated code using a wrong port still
+  crashes. Longer-term fix: scan generated code for listen() calls and patch
+  the port before running.
+
+- Continuation merging can produce duplicate function/class definitions if Opus
+  backtracks slightly when resuming. A post-merge deduplication pass would help.
+
+- Blueprint modal not available for runs before v2.0.0 (plan_text was never
+  saved). Old runs will show "No blueprint recorded for this run."
+
+
+IMPROVEMENTS
+------------
+- Add a "Replan" button on failed runs that re-runs only the planner+builder
+  steps (cheaper than a full rebuild, more targeted than a retest).
+
+- Track and display per-step costs separately (plan cost vs gen cost vs review
+  cost) rather than just the combined total.
+
+- Show token usage in the Blueprint modal (input tokens / output tokens / rounds
+  of continuation used).
+
+- Add a diff view on the Blueprint modal showing what Sonnet changed during the
+  review pass.
+
+- Streamed SSE log should auto-scroll to the bottom as new lines arrive, but
+  allow the user to scroll up without losing their position (pause auto-scroll
+  when scrolled up; resume when at bottom).
+
+- Add a "copy to clipboard" button on the Blueprint modal.
+
+- Ideator category rotation is currently just a prompt hint; the AI can ignore
+  it. Store the last N categories in DB and hard-exclude them in the prompt.
+
+- Large builds (1500–2500 lines) still occasionally hit even 32K tokens for
+  projects with heavy inline HTML. Could split generation into two passes:
+  backend first, then frontend.
+
+
+INFRASTRUCTURE
+--------------
+- Railway volume is unbounded; add a cleanup job that deletes project files
+  older than 30 days (keeping only DB metadata + screenshot).
+
+- No health-check endpoint. Add GET /health returning { status: "ok", version }.
+
+- SQLite is fine for single-instance Railway deployments but will break under
+  horizontal scaling. No action needed unless Railway adds replicas.

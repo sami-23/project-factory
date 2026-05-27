@@ -1,3 +1,5 @@
+import os
+import platform
 import shutil
 import socket
 import subprocess
@@ -6,6 +8,23 @@ import time
 import urllib.request
 import urllib.error
 from pathlib import Path
+
+
+def _kill_port(port: int):
+    """Kill any process currently listening on the given TCP port."""
+    try:
+        if platform.system() == "Windows":
+            r = subprocess.run(["netstat", "-ano"], capture_output=True, text=True, timeout=10)
+            for line in r.stdout.splitlines():
+                if f":{port} " in line and "LISTENING" in line:
+                    parts = line.split()
+                    if parts:
+                        subprocess.run(["taskkill", "/F", "/PID", parts[-1]],
+                                       capture_output=True, timeout=5)
+        else:
+            subprocess.run(["fuser", "-k", f"{port}/tcp"], capture_output=True, timeout=10)
+    except Exception:
+        pass
 
 
 def run_project(idea: dict, tmpdir: Path, log) -> tuple[bool, str, str]:
@@ -111,9 +130,11 @@ def _http_ok(port: int) -> tuple[bool, str]:
 
 def _check_web_start(idea: dict, tmpdir: Path, log, cmd: list) -> tuple[bool, str, str]:
     port = idea.get("web_port") or 5000
+    _kill_port(port)
     log(f"🌐 Starting web server (port {port})...")
+    env = {**os.environ, "PORT": str(port)}
     proc = subprocess.Popen(
-        cmd, cwd=tmpdir,
+        cmd, cwd=tmpdir, env=env,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
     )
     for _ in range(20):

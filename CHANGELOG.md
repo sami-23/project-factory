@@ -1,3 +1,19 @@
+## v2.0.0 — Max-token resilience + port reliability + blueprint viewer (2026-05-25)
+
+### New features
+- **Architecture Blueprint viewer**: the Sonnet planning doc is now saved to the DB (`plan_text` column) and exposed via `GET /runs/{id}/plan`; a **Blueprint** button appears on every card and list row that has a saved plan; clicking it opens a styled modal that renders the markdown (section headers, bullets, inline code, bold) in the dark theme
+- **Max-token continuation loop**: when Opus hits its output ceiling mid-generation, the pipeline automatically sends a multi-turn continuation request ("continue exactly where you left off") and repeats up to 5 times until the response completes naturally; the loop accumulates cost correctly across all rounds
+- **Port injection + stale-process cleanup** in `tester.py`: `_kill_port(port)` kills any process already holding the target port before each server start (Windows: `netstat -ano` + `taskkill`; Linux/Mac: `fuser -k`); `PORT=<web_port>` is injected into the subprocess environment so servers that check `process.env.PORT` always bind to the correct port
+
+### Changes
+- `builder.py`: per-size `gen_tokens` / `review_tokens` removed from `_SIZE_CONFIG` — output volume is controlled by the prompt's `size_rules`, not a token budget; `_OPUS_MAX_TOKENS = 32_000` and `_SONNET_MAX_TOKENS = 16_000` constants used for every API call; JavaScript lang hint now requires `const PORT = parseInt(process.env.PORT) || <fallback>` pattern
+- `database.py`: `plan_text TEXT` column added + auto-migration on startup
+- `orchestrator.py`: `db.update_run(run_id, plan_text=plan)` called immediately after planning step
+- `main.py`: `GET /runs/{run_id}/plan` endpoint added; `has_plan` flag computed per run in dashboard route
+- `index.html`: Blueprint button in grid and list views; plan modal with minimal markdown-to-HTML renderer (`_mdToHtml`); `closePlanModal()` wired to Escape key
+
+---
+
 ## v1.9.0 — Project size selector + estimated build cost (2026-05-25)
 
 ### New features
