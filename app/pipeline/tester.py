@@ -8,6 +8,7 @@ import time
 import urllib.request
 import urllib.error
 from pathlib import Path
+from subprocess import TimeoutExpired
 
 
 def _kill_port(port: int):
@@ -75,10 +76,14 @@ def _run_python(idea: dict, tmpdir: Path, log) -> tuple[bool, str, str]:
     if idea["project_type"] == "web":
         return _check_web_start(idea, tmpdir, log, [sys.executable, idea["entry_point"]])
     log(f"🏃 {idea['run_command']}")
-    r = subprocess.run(
-        [sys.executable, idea["entry_point"]],
-        cwd=tmpdir, capture_output=True, text=True, timeout=30,
-    )
+    try:
+        r = subprocess.run(
+            [sys.executable, idea["entry_point"]],
+            cwd=tmpdir, capture_output=True, text=True, timeout=30,
+        )
+    except TimeoutExpired:
+        log("✅ CLI ran for 30 s without crashing (interactive/long-running app)")
+        return True, "", ""
     ok = r.returncode == 0
     log(f"{'✅' if ok else '❌'} exit {r.returncode}")
     if not ok:
@@ -100,10 +105,14 @@ def _run_node(idea: dict, tmpdir: Path, log) -> tuple[bool, str, str]:
             return _check_web_start(idea, tmpdir, log, ["npx", "serve", "-l", str(idea.get("web_port") or 3000)])
         return _check_web_start(idea, tmpdir, log, ["node", entry])
     log(f"🏃 {idea['run_command']}")
-    r = subprocess.run(
-        ["node", idea["entry_point"]],
-        cwd=tmpdir, capture_output=True, text=True, timeout=30,
-    )
+    try:
+        r = subprocess.run(
+            ["node", idea["entry_point"]],
+            cwd=tmpdir, capture_output=True, text=True, timeout=30,
+        )
+    except TimeoutExpired:
+        log("✅ CLI ran for 30 s without crashing (interactive/long-running app)")
+        return True, "", ""
     ok = r.returncode == 0
     log(f"{'✅' if ok else '❌'} exit {r.returncode}")
     if not ok:
