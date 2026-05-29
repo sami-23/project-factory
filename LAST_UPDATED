@@ -1,0 +1,1 @@
+2026-05-29 — raised minimal build timeouts (gen 300s→600s, SDK 180s→300s) to fix Sonnet review cutoff; CLI TimeoutExpired treated as pass

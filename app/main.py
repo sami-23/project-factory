@@ -12,7 +12,7 @@ from fastapi.requests import Request
 
 from app.config import get_settings
 from app import database as db
-from app.pipeline.orchestrator import run_pipeline, retest_pipeline, is_running, VERSION
+from app.pipeline.orchestrator import run_pipeline, retest_pipeline, is_running, VERSION, LAST_UPDATED
 from app.scheduler import start_scheduler, stop_scheduler, get_next_run_time
 
 settings = get_settings()
@@ -63,6 +63,7 @@ def dashboard(request: Request):
             "current": current,
             "is_running": is_running(),
             "version": VERSION,
+            "last_updated": LAST_UPDATED,
             "next_build_iso": get_next_run_time() or "",
         },
     )

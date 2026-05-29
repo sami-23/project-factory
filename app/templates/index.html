@@ -210,7 +210,7 @@
 <header>
   <div>
     <div class="logo">⚙️ Project Factory</div>
-    <div class="logo-sub">Daily AI-generated GitHub projects &nbsp;·&nbsp; git:{{ version }}</div>
+    <div class="logo-sub">Daily AI-generated GitHub projects &nbsp;·&nbsp; git:{{ version }}{% if last_updated %} &nbsp;·&nbsp; <span title="{{ last_updated }}">updated: {{ last_updated.split(' — ')[0] }}</span>{% endif %}</div>
   </div>
   <div class="header-right">
     {% if is_running %}

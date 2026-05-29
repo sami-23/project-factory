@@ -39,6 +39,22 @@ def _get_version() -> str:
 
 VERSION = _get_version()
 
+
+def _get_last_updated() -> str:
+    p = Path(__file__).resolve()
+    for _ in range(6):
+        p = p.parent
+        candidate = p / "LAST_UPDATED"
+        if candidate.exists():
+            try:
+                return candidate.read_text().strip().splitlines()[0]
+            except Exception:
+                break
+    return ""
+
+
+LAST_UPDATED = _get_last_updated()
+
 _running = False
 
 
