@@ -122,7 +122,7 @@ _SIZE_CONFIG = {
             "- Total code 200-400 lines — functional but compact\n"
             "- For web: a single-page or two-page UI is fine"
         ),
-        "api_timeout":  180.0,
+        "api_timeout":  300.0,
     },
     "standard": {
         "size_rules": (

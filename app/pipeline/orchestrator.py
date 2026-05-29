@@ -47,7 +47,7 @@ def is_running() -> bool:
 
 
 _PLAN_TIMEOUTS = {"minimal": 90,  "standard": 120, "large": 180}
-_GEN_TIMEOUTS  = {"minimal": 300, "standard": 600, "large": 1200}
+_GEN_TIMEOUTS  = {"minimal": 600, "standard": 600, "large": 1200}
 
 
 def _load_project_files(project_dir: Path) -> list[tuple[str, str]]:
