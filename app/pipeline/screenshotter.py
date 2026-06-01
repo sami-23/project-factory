@@ -1,9 +1,12 @@
+import os
 import subprocess
 import sys
 import socket
 import time
 from html import escape
 from pathlib import Path
+
+from app.pipeline.tester import _kill_port
 
 
 async def take_screenshot(
@@ -35,8 +38,12 @@ async def _shot_web(idea: dict, tmpdir: Path, out: Path, log) -> bool:
     lang = idea["language"]
     cmd = [sys.executable, idea["entry_point"]] if lang == "python" else ["node", idea["entry_point"]]
 
+    # Free the port from any lingering process, then start a fresh server
+    # bound to the expected port via the PORT env var (servers that honour it).
+    _kill_port(port)
+    env = {**os.environ, "PORT": str(port)}
     proc = subprocess.Popen(
-        cmd, cwd=tmpdir,
+        cmd, cwd=tmpdir, env=env,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     # Wait for server

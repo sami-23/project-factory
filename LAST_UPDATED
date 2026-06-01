@@ -1,1 +1,1 @@
-2026-05-29 — raised minimal build timeouts (gen 300s→600s, SDK 180s→300s) to fix Sonnet review cutoff; CLI TimeoutExpired treated as pass
+2026-06-02 — fixed duplicate-screenshot bug: _kill_port was a no-op on Railway (no fuser), leaving zombie web servers that every later run screenshotted; now uses psutil, test server is killed after verify, and screenshotter injects PORT

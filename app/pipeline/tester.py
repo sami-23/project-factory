@@ -13,6 +13,24 @@ from subprocess import TimeoutExpired
 
 def _kill_port(port: int):
     """Kill any process currently listening on the given TCP port."""
+    # Preferred: psutil — cross-platform and does not depend on CLI tools
+    # (the python:3.12-bookworm image does NOT ship `fuser`/psmisc).
+    try:
+        import psutil
+        killed = False
+        for conn in psutil.net_connections(kind="inet"):
+            if (conn.laddr and conn.laddr.port == port
+                    and conn.status == psutil.CONN_LISTEN and conn.pid):
+                try:
+                    psutil.Process(conn.pid).kill()
+                    killed = True
+                except Exception:
+                    pass
+        if killed:
+            return
+    except Exception:
+        pass
+    # Fallback to platform CLI tools if psutil is unavailable
     try:
         if platform.system() == "Windows":
             r = subprocess.run(["netstat", "-ano"], capture_output=True, text=True, timeout=10)
@@ -156,9 +174,15 @@ def _check_web_start(idea: dict, tmpdir: Path, log, cmd: list) -> tuple[bool, st
                     stdout, stderr = proc.communicate(timeout=5)
                     log(f"❌ Server started but returned error: {reason}")
                     return False, stdout, reason
+                # Verified it starts — kill it now so it doesn't linger as a
+                # zombie holding the port for the next run's test/screenshot.
+                proc.kill()
+                try:
+                    proc.communicate(timeout=5)
+                except Exception:
+                    pass
                 log(f"✅ Server is up on :{port}")
-                # Leave it running — screenshotter will kill it
-                return True, f"Server running on :{port}", ""
+                return True, f"Server started OK on :{port}", ""
     proc.kill()
     stdout, stderr = proc.communicate(timeout=5)
     log(f"❌ Server did not start: {stderr[:200]}")
