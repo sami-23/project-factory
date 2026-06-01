@@ -1,1 +1,1 @@
-2026-06-02 — fixed duplicate-screenshot bug: _kill_port was a no-op on Railway (no fuser), leaving zombie web servers that every later run screenshotted; now uses psutil, test server is killed after verify, and screenshotter injects PORT
+2026-06-02 — Retest button now shows on successful runs too (any run with saved files), so screenshots can be regenerated after the duplicate-screenshot fix

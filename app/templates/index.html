@@ -360,10 +360,10 @@
         {% if run.has_plan %}<button class="action-btn" onclick="showPlan({{ run.id }}, '{{ run.title | e }}')" title="View architecture blueprint">Blueprint</button>{% endif %}
         {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
         {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
+        {% if run.has_download and run.status != 'running' %}
+          <button class="action-btn retest" onclick="retestRun({{ run.id }})" title="Re-run test &amp; screenshot using saved files — no AI cost">▶ Retest</button>
+        {% endif %}
         {% if run.status == 'failed' %}
-          {% if run.has_download %}
-            <button class="action-btn retest" onclick="retestRun({{ run.id }})" title="Re-run test using saved files — no AI cost">▶ Retest</button>
-          {% endif %}
           <button class="action-btn retry" onclick="retryRun({{ run.id }})" title="Full rebuild — re-generates code (costs tokens)">↺ Rebuild</button>
           <button class="action-btn delete" onclick="deleteRun({{ run.id }})">✕</button>
         {% endif %}
@@ -415,10 +415,10 @@
       {% if run.has_plan %}<button class="action-btn" onclick="showPlan({{ run.id }}, '{{ run.title | e }}')" title="View architecture blueprint">Blueprint</button>{% endif %}
       {% if run.github_url %}<a class="action-btn github" href="{{ run.github_url }}" target="_blank">GitHub</a>{% endif %}
       {% if run.has_download %}<a class="action-btn download" href="/runs/{{ run.id }}/download" download>↓ ZIP</a>{% endif %}
+      {% if run.has_download and run.status != 'running' %}
+        <button class="action-btn retest" onclick="retestRun({{ run.id }})" title="Re-run test &amp; screenshot using saved files — no AI cost">▶ Retest</button>
+      {% endif %}
       {% if run.status == 'failed' %}
-        {% if run.has_download %}
-          <button class="action-btn retest" onclick="retestRun({{ run.id }})" title="Re-run test using saved files — no AI cost">▶ Retest</button>
-        {% endif %}
         <button class="action-btn retry" onclick="retryRun({{ run.id }})" title="Full rebuild — re-generates code (costs tokens)">↺ Rebuild</button>
         <button class="action-btn delete" onclick="deleteRun({{ run.id }})">✕</button>
       {% endif %}
