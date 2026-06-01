@@ -328,7 +328,7 @@
        data-desc="{{ (run.description or '') | lower }}"
        data-stack="{{ run.tech_stack_list | join(' ') | lower }}">
     {% if run.screenshot_path %}
-      <img class="card-img" src="/screenshots/{{ run.id }}.png" alt="screenshot" loading="lazy">
+      <img class="card-img" src="/screenshots/{{ run.id }}.png?v={{ run.shot_ver }}" alt="screenshot" loading="lazy">
     {% else %}
       <div class="card-img-placeholder">
         {% if run.status == 'running' %}⏳{% elif run.status == 'failed' %}❌{% else %}🤖{% endif %}
@@ -385,7 +385,7 @@
        data-desc="{{ (run.description or '') | lower }}"
        data-stack="{{ run.tech_stack_list | join(' ') | lower }}">
     {% if run.screenshot_path %}
-      <img class="list-thumb" src="/screenshots/{{ run.id }}.png" alt="screenshot" loading="lazy">
+      <img class="list-thumb" src="/screenshots/{{ run.id }}.png?v={{ run.shot_ver }}" alt="screenshot" loading="lazy">
     {% else %}
       <div class="list-thumb-placeholder">{% if run.status == 'running' %}⏳{% elif run.status == 'failed' %}❌{% else %}🤖{% endif %}</div>
     {% endif %}

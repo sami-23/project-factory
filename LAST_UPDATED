@@ -1,1 +1,1 @@
-2026-06-02 — Retest button now shows on successful runs too (any run with saved files), so screenshots can be regenerated after the duplicate-screenshot fix
+2026-06-02 — screenshot now refreshes in the UI after Retest: added mtime-based cache-buster (?v=) on image URLs + no-cache header on the screenshot endpoint

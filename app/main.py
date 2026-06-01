@@ -41,7 +41,8 @@ def get_screenshot(filename: str):
     path = data_dir / "screenshots" / filename
     if not path.exists():
         raise HTTPException(404)
-    return FileResponse(path)
+    # No-cache so a regenerated screenshot (e.g. after Retest) is always re-fetched
+    return FileResponse(path, headers={"Cache-Control": "no-cache, must-revalidate"})
 
 
 # ── dashboard ─────────────────────────────────────────────────────────────────
@@ -54,6 +55,9 @@ def dashboard(request: Request):
         run["has_plan"] = bool(run.get("plan_text"))
         ts = run.get("tech_stack")
         run["tech_stack_list"] = json.loads(ts) if ts else []
+        # Cache-buster: changes whenever the screenshot file is rewritten
+        shot = data_dir / "screenshots" / f"{run['id']}.png"
+        run["shot_ver"] = int(shot.stat().st_mtime) if shot.exists() else 0
     current = db.get_current_run()
     return templates.TemplateResponse(
         "index.html",
